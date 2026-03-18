@@ -95,8 +95,8 @@ function PlayerCardStats({ playerName, mode }) {
     const params = new URLSearchParams()
     if (mode !== 'All') params.set('game_mode', mode)
     Promise.all([
-      fetch(`/api/player_stats/${encodeURIComponent(playerName)}?${params}`).then(r => r.json()),
-      fetch('/api/card_stats').then(r => r.json()),
+      fetch(getApiUrl(`/api/player_stats/${encodeURIComponent(playerName)}?${params}`)).then(r => r.json()),
+      fetch(getApiUrl('/api/card_stats')).then(r => r.json()),
     ]).then(([playerData, cardStats]) => {
       setData(playerData)
       const ratings = {}
@@ -208,7 +208,7 @@ function PlayerMatchHistory({ playerName, mode }) {
     setLoading(true)
     const params = new URLSearchParams()
     if (mode !== 'All') params.set('game_mode', mode)
-    fetch(`/api/match_history/${encodeURIComponent(playerName)}?${params}`)
+    fetch(getApiUrl(`/api/match_history/${encodeURIComponent(playerName)}?${params}`))
       .then(r => r.json())
       .then(d => { setMatches(d); setLoading(false) })
       .catch(() => setLoading(false))
@@ -246,8 +246,8 @@ function PlayerDetail({ playerName, mode }) {
     const params = new URLSearchParams()
     if (mode !== 'All') params.set('game_mode', mode)
     Promise.all([
-      fetch(`/api/player_stats/${encodeURIComponent(playerName)}?${params}`).then(r => r.json()),
-      fetch(`/api/elo?${params}`).then(r => r.json()),
+      fetch(getApiUrl(`/api/player_stats/${encodeURIComponent(playerName)}?${params}`)).then(r => r.json()),
+      fetch(getApiUrl(`/api/elo?${params}`)).then(r => r.json()),
     ]).then(([pdata, eloData]) => {
       setData(pdata)
       setElo(eloData[playerName] ?? 1000)
@@ -330,9 +330,9 @@ function Leaderboard({ mode }) {
     const params = new URLSearchParams()
     if (mode !== 'All') params.set('game_mode', mode)
     Promise.all([
-      fetch('/api/players').then(r => r.json()),
-      fetch(`/api/player_stats?${params}`).then(r => r.json()),
-      fetch(`/api/elo?${params}`).then(r => r.json()),
+      fetch(getApiUrl('/api/players')).then(r => r.json()),
+      fetch(getApiUrl(`/api/player_stats?${params}`)).then(r => r.json()),
+      fetch(getApiUrl(`/api/elo?${params}`)).then(r => r.json()),
     ]).then(([names, ps, elo]) => {
       setPlayerNames(names)
       setPlayerStats(ps)
