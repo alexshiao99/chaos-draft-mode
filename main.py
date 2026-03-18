@@ -20,7 +20,9 @@ Deck string — generates a https://link.clashroyale.com/deck/en?deck=... link
               tap it on your phone and import the deck directly into the game.
 """
 
+import re
 import threading
+import time
 import webbrowser
 
 from flask import Flask
@@ -28,18 +30,37 @@ from flask_cors import CORS
 
 from config import CR_API_TOKEN, PORT
 from backend.cards import fetch_cards
-from backend.draft import draft_bp
+from backend.draft import draft_bp, lobbies
 import backend.draft as _draft
 from backend.stats import stats_bp
 from frontend.frontend import frontend_bp
 
 # ── App factory ───────────────────────────────────────────────────────────────
 app = Flask(__name__, static_folder="static")
-CORS(app)
+CORS(app, resources={r"/api/*": {
+    "origins": [
+        "http://localhost:5173",
+        re.compile(r"https://.*\.amplifyapp\.com"),
+    ],
+    "allow_headers": ["Content-Type", "X-Player-Token"],
+}})
 
 app.register_blueprint(draft_bp)
 app.register_blueprint(stats_bp)
 app.register_blueprint(frontend_bp)
+
+
+# ── Lobby pruning (remove lobbies older than 6 hours) ─────────────────────────
+def _prune_lobbies():
+    while True:
+        time.sleep(1800)  # every 30 minutes
+        cutoff = time.time() - (6 * 3600)
+        to_delete = [lid for lid, l in list(lobbies.items())
+                     if l.get("created_at", 0) < cutoff]
+        for lid in to_delete:
+            lobbies.pop(lid, None)
+
+threading.Thread(target=_prune_lobbies, daemon=True).start()
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

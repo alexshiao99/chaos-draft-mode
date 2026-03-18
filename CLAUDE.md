@@ -372,11 +372,12 @@ Fetches battle logs for all unmatched rows in `output.csv` and regenerates `modi
 
 ## Adding / Removing Players
 
-Players are defined in three places — all must be updated together:
+Players are defined in these places — all must be updated together:
 
 1. **`config.py`** — `PLAYERS` list (used by backend stats and ELO routes)
-2. **`frontend/templates/index.html`** — the two `<select>` dropdowns and the `const PLAYERS` JS array
-3. **`frontend/templates/player_stats.html`** — the `const PLAYERS` JS array used to build the leaderboard
+2. **`react-frontend/src/data/players.js`** — `PLAYERS` export (single source of truth for the React frontend)
+3. **`frontend/templates/index.html`** — the two `<select>` dropdowns and the `const PLAYERS` JS array (legacy, kept for reference)
+4. **`frontend/templates/player_stats.html`** — the `const PLAYERS` JS array used to build the leaderboard (legacy, kept for reference)
 
 ---
 
@@ -468,7 +469,7 @@ All state transitions call `setDraft(s)` which triggers re-renders and, in AI mo
 Edit `BAN_SEQUENCE` and `PICK_SEQUENCE` in `config.py`. The frontend reads these from the API response (`s.ban_sequence`, `s.pick_sequence`) so no frontend changes are needed.
 
 ### Change the timer duration
-Edit `TURN_SECONDS` in `frontend/templates/index.html` (JS constant, line ~`const TURN_SECONDS = 30`).
+Edit the timer constant in `react-frontend/src/pages/DraftPage.jsx` (the active frontend uses its own independent timer via `setInterval` + `useRef`). The legacy `TURN_SECONDS` constant in `frontend/templates/index.html` is no longer used.
 
 ### Change random pre-ban counts or tiers
 Edit the `random.sample(splus_pool, ...)` call in `start_draft()` in `backend/draft.py`, and update `TIER_CARDS` in `config.py` to change which cards are eligible.

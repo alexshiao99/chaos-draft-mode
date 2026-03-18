@@ -3,8 +3,9 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeCanvas } from 'qrcode.react'
 import { CARD_TIER, TIER_ORDER, TIER_ICONS } from '../data/cardTiers'
 import { CARD_TYPE, TYPE_ORDER, TYPE_ICONS } from '../data/cardTypes'
+import { draftFetch, tokenKey, roleKey } from '../api'
 
-// ── API helper ────────────────────────────────────────────────────────────────
+// ── API helper (kept for non-lobby calls) ────────────────────────────────────
 async function apiCall(path, method = 'GET', body = null) {
   const r = await fetch(path, {
     method,
@@ -366,13 +367,15 @@ function BannedStrip({ banned, p1Name, p2Name }) {
   )
 }
 
-function TurnBar({ draft, timerSecs, timerPaused, onTogglePause, onUndo }) {
+function TurnBar({ draft, timerSecs, timerPaused, onTogglePause, onUndo, isMyTurn, isMultiplayer, localRole }) {
   const seq = draft.phase === 'ban' ? draft.ban_sequence : draft.pick_sequence
   const idx = draft.action_index
   const p1t = <span className="p1c">{draft.p1_name}</span>
   const p2t = <span className="p2c">{draft.p2_name}</span>
   const act = draft.phase === 'ban' ? 'bans a card' : 'picks a card'
   const nothingToUndo = draft.phase === 'ban' && draft.action_index === 0
+  // In multiplayer, undo is available only to the last-acting player (i.e. not the current player)
+  const canUndo = isMultiplayer ? (draft.whose_turn !== localRole && !nothingToUndo) : !nothingToUndo
 
   const mm = String(Math.floor(timerSecs / 60)).padStart(2, '0')
   const ss = String(timerSecs % 60).padStart(2, '0')
@@ -383,6 +386,11 @@ function TurnBar({ draft, timerSecs, timerPaused, onTogglePause, onUndo }) {
       <div className="turn-text" id="turn-text">
         {draft.current_player === 1 ? p1t : p2t} {act}
         {draft.ai_mode && <span className="ai-mode-tag">🤖 AI Mode</span>}
+        {isMultiplayer && (
+          <span style={{ marginLeft: '.5rem', fontSize: '.75rem', color: isMyTurn ? 'var(--win)' : 'var(--text-muted)' }}>
+            {isMyTurn ? '(your turn)' : '(waiting...)'}
+          </span>
+        )}
       </div>
       <div className="progress-dots" id="progress-dots">
         {seq.map((p, i) => {
@@ -404,7 +412,7 @@ function TurnBar({ draft, timerSecs, timerPaused, onTogglePause, onUndo }) {
           id="btn-undo"
           onClick={onUndo}
           title="Undo last pick or ban"
-          disabled={nothingToUndo}
+          disabled={!canUndo}
         >
           ↩ Undo
         </button>
@@ -586,29 +594,48 @@ export default function DraftPage() {
   const [aiThinking, setAiThinking]     = useState(false)
   const [aiLogOpen, setAiLogOpen]       = useState(false)
   const [copyMsg, setCopyMsg]           = useState({})  // { 1: bool, 2: bool }
+  const [lobbyCopied, setLobbyCopied]   = useState(false)
+
+  // Role detection from localStorage
+  const localRole = parseInt(localStorage.getItem(roleKey(lobbyId)), 10) || null
 
   // Refs to avoid stale closures
   const draftRef      = useRef(draft)
-  const timerRef      = useRef(null)
-  const tickTimeoutRef = useRef(null)
-  const pausedRef     = useRef(timerPaused)
   const stickyTopRef  = useRef(null)
 
   // Keep refs in sync
   useEffect(() => { draftRef.current = draft }, [draft])
-  useEffect(() => { pausedRef.current = timerPaused }, [timerPaused])
 
-  // Fetch draft state from API on mount (supports opening in a new tab)
+  // Multiplayer: is it my turn?
+  const isMyTurn = draft?.whose_turn === localRole && draft?.status === 'active'
+  const isMultiplayer = !draft?.ai_mode && localRole != null
+
+  // Polling loop — 100ms interval, in-flight guard prevents pileup
+  const pollRef = useRef(null)
+  const pollInFlightRef = useRef(false)
+
   useEffect(() => {
     if (!lobbyId) { navigate('/'); return }
-    fetch(`/api/${lobbyId}/state`)
-      .then(r => r.json())
-      .then(s => {
-        if (s.error) { navigate('/'); return }
-        setDraft(s)
-        if (s.phase !== 'done' && !s.ai_mode) startTimer()
-      })
-      .catch(() => navigate('/'))
+
+    async function poll() {
+      if (pollInFlightRef.current) return
+      pollInFlightRef.current = true
+      try {
+        const res = await draftFetch(lobbyId, '/state')
+        if (res.status === 404) {
+          navigate('/', { state: { error: 'Lobby expired' } })
+          return
+        }
+        if (!res.ok) return
+        const data = await res.json()
+        setDraft(data)
+      } catch { /* network hiccup — retry next tick */ }
+      finally { pollInFlightRef.current = false }
+    }
+
+    poll()  // immediate fetch on mount
+    pollRef.current = setInterval(poll, 100)
+    return () => clearInterval(pollRef.current)
   }, [lobbyId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Track sticky-top height so sidebars can stick directly below it
@@ -627,72 +654,108 @@ export default function DraftPage() {
     return () => ro.disconnect()
   }, []) // runs once on mount
 
-  // ── Timer ───────────────────────────────────────────────────────────────────
-  function scheduleTickSound(secs) {
-    clearTimeout(tickTimeoutRef.current)
-    if (pausedRef.current || secs <= 0 || secs > 10) return
-    const delay = secs > 5 ? 800 : secs > 3 ? 500 : 250
-    tickTimeoutRef.current = setTimeout(() => {
-      if (pausedRef.current) return
-      playTick(true)
-      // get updated secs from closure — re-read state via interval pattern
-      scheduleTickSound(secs - (delay / 1000))
-    }, delay)
-  }
+  // ── Timer (server-authoritative + client-side countdown) ─────────────────
+  const prevActionIndexRef = useRef(null)
+  const autoPickedRef = useRef(false)
+  const lastTickSecRef = useRef(null)
+  const serverRemainingRef = useRef(null)  // last server value (float seconds)
+  const syncTimeRef = useRef(null)         // Date.now() when last synced
 
-  function stopTimer() {
-    clearInterval(timerRef.current)
-    clearTimeout(tickTimeoutRef.current)
-    timerRef.current = null
-    tickTimeoutRef.current = null
-  }
+  // Sync from server on each poll — DRIFT-AWARE (FIXED)
+  useEffect(() => {
+    if (!draft) return
 
-  function startTimer() {
-    stopTimer()
-    setTimerSecs(30)
-    setTimerPaused(false)
-    pausedRef.current = false
+    const remaining = draft.turn_time_remaining
+    setTimerPaused(!!draft.timer_paused)
 
-    let secs = 30
-    timerRef.current = setInterval(() => {
-      if (pausedRef.current) return
-      secs--
-      if (secs <= 0) {
-        secs = 0
-        setTimerSecs(0)
-        stopTimer()
-        autoPickRandom()
+    if (remaining == null) {
+      serverRemainingRef.current = null
+      syncTimeRef.current = null
+    } else {
+      const now = Date.now()
+
+      if (serverRemainingRef.current == null || syncTimeRef.current == null) {
+        // First sync
+        serverRemainingRef.current = remaining
+        syncTimeRef.current = now
+        setTimerSecs(Math.ceil(remaining))
+      } else {
+        const elapsed = (now - syncTimeRef.current) / 1000
+        const clientEstimate = serverRemainingRef.current - elapsed
+        const drift = remaining - clientEstimate
+
+        // Only correct if drift is meaningful (>0.5s)
+        if (Math.abs(drift) > 0.5) {
+          serverRemainingRef.current = remaining
+          syncTimeRef.current = now
+        } else if (Math.abs(drift) > 0.1) {
+          // Smooth minor drift (no snapping)
+          serverRemainingRef.current += drift * 0.2
+        }
+      }
+    }
+
+    // Reset auto-pick guard when a new turn starts
+    if (draft.action_index !== prevActionIndexRef.current) {
+      autoPickedRef.current = false
+      lastTickSecRef.current = null
+      prevActionIndexRef.current = draft.action_index
+    }
+  }, [draft?.turn_time_remaining, draft?.action_index])
+
+  // Client-side countdown interval — sole driver of displayed timer
+  useEffect(() => {
+    if (timerPaused) return
+
+    const id = setInterval(() => {
+      if (serverRemainingRef.current == null || syncTimeRef.current == null) {
+        setTimerSecs(30)
         return
       }
-      setTimerSecs(secs)
-      if (secs === 10) {
-        scheduleTickSound(secs)
-      }
-    }, 1000)
-  }
 
-  function autoPickRandom() {
-    const d = draftRef.current
-    if (!d || !d.pool || d.pool.length === 0) return
-    const randomCard = d.pool[Math.floor(Math.random() * d.pool.length)]
-    apiCall(`/api/${lobbyId}/action`, 'POST', { card_id: randomCard.id }).then(s => {
-      if (s.error) { console.warn('Auto-pick failed:', s.error); return }
-      applyState(s)
-    })
-  }
+      const elapsed = (Date.now() - syncTimeRef.current) / 1000
+      const secs = Math.ceil(Math.max(serverRemainingRef.current - elapsed, 0))
+
+      setTimerSecs(secs)
+    }, 100) // smoother updates
+
+    return () => clearInterval(id)
+  }, [timerPaused])
+
+  // Auto-pick + tick sounds — unchanged
+  useEffect(() => {
+    if (timerSecs <= 0 && !autoPickedRef.current) {
+      const d = draftRef.current
+      if (!d || !d.pool || d.pool.length === 0) return
+      if (isMultiplayer && d.whose_turn !== localRole) return
+
+      autoPickedRef.current = true
+      const randomCard = d.pool[Math.floor(Math.random() * d.pool.length)]
+
+      draftFetch(lobbyId, '/action', {
+        method: 'POST',
+        body: JSON.stringify({ card_id: randomCard.id }),
+      }).then(async (res) => {
+        if (!res.ok) return
+        const s = await res.json()
+        if (!s.error) applyState(s)
+      })
+    }
+
+    // Tick sounds — play once per whole second in the last 10 seconds
+    if (timerSecs > 0 && timerSecs <= 10 && timerSecs !== lastTickSecRef.current) {
+      lastTickSecRef.current = timerSecs
+      playTick(timerSecs <= 3)
+    }
+  }, [timerSecs])
 
   function togglePause() {
-    setTimerPaused(prev => {
-      const next = !prev
-      pausedRef.current = next
-      if (!next) {
-        // resuming — reschedule tick sound
-        scheduleTickSound(timerSecs)
-      } else {
-        clearTimeout(tickTimeoutRef.current)
-      }
-      return next
-    })
+    draftFetch(lobbyId, '/pause', { method: 'POST' })
+      .then(async (res) => {
+        if (!res.ok) return
+        const s = await res.json()
+        setDraft(s)
+      })
   }
 
   // ── AI auto-trigger ─────────────────────────────────────────────────────────
@@ -724,41 +787,43 @@ export default function DraftPage() {
   function applyState(s) {
     setAiThinking(false)
     setDraft(s)
-    if (s.phase !== 'done') {
-      if (!s.ai_mode) {
-        startTimer()
-      } else {
-        stopTimer()
-      }
-    } else {
-      stopTimer()
-    }
   }
 
   // ── Actions ─────────────────────────────────────────────────────────────────
   async function doAction(id) {
-    const s = await apiCall(`/api/${lobbyId}/action`, 'POST', { card_id: id })
+    if (isMultiplayer && !isMyTurn) return
+    const res = await draftFetch(lobbyId, '/action', {
+      method: 'POST',
+      body: JSON.stringify({ card_id: id }),
+    })
+    if (res.status === 403) return  // not your turn (race condition with polling)
+    const s = await res.json()
     if (s.error) { alert(s.error); return }
     applyState(s)
   }
 
   async function undoAction() {
-    const s = await apiCall(`/api/${lobbyId}/undo`, 'POST')
+    const res = await draftFetch(lobbyId, '/undo', { method: 'POST' })
+    if (res.status === 403) return  // not your undo
+    const s = await res.json()
     if (s.error) { alert(s.error); return }
     applyState(s)
   }
 
   async function resetDraft() {
-    stopTimer()
-    await apiCall(`/api/${lobbyId}/reset`, 'POST')
+    await draftFetch(lobbyId, '/reset', { method: 'POST' })
     navigate('/')
   }
 
   async function declareWinner(player) {
     try {
-      const res = await apiCall(`/api/${lobbyId}/record_winner`, 'POST', { winner: player })
-      if (res.error) { alert('Error saving result: ' + res.error); return }
-      setWinnerInfo({ winner: res.winner, loser: res.loser })
+      const res = await draftFetch(lobbyId, '/record_winner', {
+        method: 'POST',
+        body: JSON.stringify({ winner: player }),
+      })
+      const data = await res.json()
+      if (data.error) { alert('Error saving result: ' + data.error); return }
+      setWinnerInfo({ winner: data.winner, loser: data.loser })
     } catch (e) {
       alert('Failed to save result: ' + e.message)
     }
@@ -780,8 +845,17 @@ export default function DraftPage() {
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
-  const showDraft = draft && draft.phase !== 'done'
-  const showDone  = draft && draft.phase === 'done'
+  const showWaiting = draft?.status === 'waiting_for_p2'
+  const showDraft   = draft && draft.phase !== 'done' && !showWaiting
+  const showDone    = draft && draft.phase === 'done'
+
+  const joinUrl = lobbyId ? `${window.location.origin}/draft/${lobbyId}/join` : ''
+
+  // In multiplayer, only allow actions when it's your turn
+  const handleCardAction = (cardId) => {
+    if (isMultiplayer && !isMyTurn) return
+    doAction(cardId)
+  }
 
   return (
     <>
@@ -793,6 +867,37 @@ export default function DraftPage() {
 
       <main>
 
+        {/* ── WAITING FOR P2 SCREEN ── */}
+        {showWaiting && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', padding: '3rem 1rem', textAlign: 'center' }}>
+            <h2 style={{ fontFamily: "'Cinzel Decorative', serif", color: 'var(--gold)', fontSize: '1.3rem' }}>
+              Waiting for Player 2 to join...
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '.85rem', maxWidth: '420px' }}>
+              Share this link with your opponent. The draft will start automatically when they join.
+            </p>
+            <div style={{
+              background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '.75rem',
+              padding: '1rem', wordBreak: 'break-all', fontSize: '.85rem', maxWidth: '500px', width: '100%',
+            }}>
+              {joinUrl}
+            </div>
+            <div style={{ display: 'flex', gap: '.5rem' }}>
+              <button className="btn btn-gold" onClick={() => {
+                navigator.clipboard.writeText(joinUrl)
+                setLobbyCopied(true)
+                setTimeout(() => setLobbyCopied(false), 2000)
+              }}>
+                {lobbyCopied ? 'Copied!' : 'Copy Link'}
+              </button>
+            </div>
+            <QRCodeCanvas value={joinUrl} size={200} />
+            <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>
+              Polling every 5 seconds...
+            </div>
+          </div>
+        )}
+
         {/* ── DRAFT SCREEN ── */}
         {showDraft && (
           <div id="draft-screen" style={{ display: 'block' }}>
@@ -803,6 +908,9 @@ export default function DraftPage() {
                 timerPaused={timerPaused}
                 onTogglePause={togglePause}
                 onUndo={undoAction}
+                isMyTurn={isMyTurn}
+                isMultiplayer={isMultiplayer}
+                localRole={localRole}
               />
               <BannedStrip
                 banned={draft.banned}
@@ -815,7 +923,7 @@ export default function DraftPage() {
               <Sidebar playerName={draft.p1_name} picks={draft.p1_picks || []} side="p1" />
               <CardPool
                 pool={draft.pool || []}
-                onAction={doAction}
+                onAction={handleCardAction}
                 rarityFilter={rarityFilter}
                 setRarityFilter={setRarityFilter}
                 sortMode={sortMode}
