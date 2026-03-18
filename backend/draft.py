@@ -3,6 +3,7 @@ draft.py — Draft state, game logic, and draft API Blueprint.
 
 Routes:
   POST /api/start
+  POST /api/<lobby_id>/join
   GET  /api/<lobby_id>/state
   POST /api/<lobby_id>/action
   POST /api/<lobby_id>/undo
@@ -12,6 +13,8 @@ Routes:
 
 import random
 import secrets
+import threading
+import time
 from flask import Blueprint, jsonify, request
 from config import (
     BAN_SEQUENCE, PICK_SEQUENCE,
@@ -46,7 +49,44 @@ def _make_lobby_state(p1, p2, ai_mode=False):
         "2nd_pick":     p2,
         "ai_mode":      ai_mode,
         "ai_log":       [],
+        # Multiplayer fields
+        "p1_token":     None,
+        "p2_token":     None,
+        "status":       "waiting_for_p2",  # "waiting_for_p2" | "active" | "complete"
+        "created_at":   time.time(),
+        "_lock":        threading.Lock(),
+        # Server-authoritative timer
+        "turn_started_at":        time.time(),
+        "timer_paused_remaining": None,   # None = running, float = paused with N secs left
     }
+
+
+def get_whose_turn(lobby):
+    """Returns 1 or 2 based on phase and action_index. Returns None if no active turn."""
+    phase = lobby["phase"]
+    idx = lobby["action_index"]
+    if phase == "ban":
+        if idx >= len(BAN_SEQUENCE):
+            return None
+        return BAN_SEQUENCE[idx]
+    elif phase == "pick":
+        if idx < 0 or idx >= len(PICK_SEQUENCE):
+            return None
+        return PICK_SEQUENCE[idx]
+    return None
+
+
+TURN_SECONDS = 30
+
+def _get_turn_time_remaining(st):
+    """Compute seconds left on the turn timer. Returns None if timer is irrelevant."""
+    if st["phase"] not in ("ban", "pick") or st["ai_mode"]:
+        return None
+    if st["timer_paused_remaining"] is not None:
+        return round(st["timer_paused_remaining"], 1)
+    elapsed = time.time() - st["turn_started_at"]
+    remaining = TURN_SECONDS - elapsed
+    return round(max(remaining, 0), 1)
 
 
 def get_state_view(st):
@@ -71,6 +111,12 @@ def get_state_view(st):
         "p2_deck_link":   deck_link(st["p2_picks"]),
         "ai_mode":        st["ai_mode"],
         "ai_log":         list(st["ai_log"]),
+        # Multiplayer fields
+        "status":         st["status"],
+        "p2_joined":      st["p2_token"] is not None,
+        "whose_turn":     get_whose_turn(st),
+        "turn_time_remaining": _get_turn_time_remaining(st),
+        "timer_paused":       st["timer_paused_remaining"] is not None,
     }
 
 
@@ -116,11 +162,38 @@ def start_draft():
         st["pool"]   = [c for c in st["pool"] if c["id"] != card["id"]]
         st["banned"].append({"card": card, "by": "random"})
 
+    st["p1_token"] = secrets.token_hex(8)
+
+    # AI drafts are single-machine — mark active immediately
+    if ai_mode:
+        st["status"] = "active"
+
     lobbies[lobby_id] = st
 
     view = get_state_view(st)
     view["lobby_id"] = lobby_id
+    view["p1_token"] = st["p1_token"]
     return jsonify(view)
+
+
+@draft_bp.route("/api/<lobby_id>/join", methods=["POST"])
+def join_lobby(lobby_id):
+    lobby = lobbies.get(lobby_id)
+    if not lobby:
+        return jsonify({"error": "lobby_not_found"}), 404
+
+    with lobby["_lock"]:
+        if lobby["status"] != "waiting_for_p2":
+            return jsonify({"error": "lobby_full"}), 403
+        lobby["p2_token"] = secrets.token_hex(8)
+        lobby["status"] = "active"
+        lobby["turn_started_at"] = time.time()  # start timer fresh when P2 joins
+
+    return jsonify({
+        "p2_token": lobby["p2_token"],
+        "lobby_id": lobby_id,
+        **get_state_view(lobby),
+    })
 
 
 @draft_bp.route("/api/<lobby_id>/state", methods=["GET"])
@@ -141,42 +214,58 @@ def do_action(lobby_id):
     if st is None:
         return jsonify({"error": "Lobby not found"}), 404
 
-    body    = request.json or {}
-    card_id = body.get("card_id")
-    phase   = st["phase"]
+    with st["_lock"]:
+        # Token validation (skipped for AI mode — no human tokens needed)
+        if not st["ai_mode"]:
+            token = request.headers.get("X-Player-Token") or (request.json or {}).get("player_token")
+            whose_turn = get_whose_turn(st)
+            if whose_turn is None:
+                return jsonify({"error": "no_active_turn"}), 400
+            expected = st["p1_token"] if whose_turn == 1 else st["p2_token"]
+            if token != expected:
+                return jsonify({"error": "not_your_turn"}), 403
 
-    if phase not in ("ban", "pick"):
-        return jsonify({"error": "No action needed"}), 400
+        body    = request.json or {}
+        card_id = body.get("card_id")
+        phase   = st["phase"]
 
-    seq = BAN_SEQUENCE if phase == "ban" else PICK_SEQUENCE
-    idx = st["action_index"]
+        if phase not in ("ban", "pick"):
+            return jsonify({"error": "No action needed"}), 400
 
-    if idx >= len(seq):
-        return jsonify({"error": "Sequence complete"}), 400
+        seq = BAN_SEQUENCE if phase == "ban" else PICK_SEQUENCE
+        idx = st["action_index"]
 
-    current = seq[idx]
-    card    = next((c for c in st["pool"] if c["id"] == card_id), None)
-    if not card:
-        return jsonify({"error": "Card not in pool"}), 400
+        if idx >= len(seq):
+            return jsonify({"error": "Sequence complete"}), 400
 
-    st["pool"] = [c for c in st["pool"] if c["id"] != card_id]
+        current = seq[idx]
+        card    = next((c for c in st["pool"] if c["id"] == card_id), None)
+        if not card:
+            return jsonify({"error": "Card not in pool"}), 400
 
-    if phase == "ban":
-        st["banned"].append({"card": card, "by": current})
-    else:
-        (st["p1_picks"] if current == 1 else st["p2_picks"]).append(card)
+        st["pool"] = [c for c in st["pool"] if c["id"] != card_id]
 
-    st["action_index"] += 1
+        if phase == "ban":
+            st["banned"].append({"card": card, "by": current})
+        else:
+            (st["p1_picks"] if current == 1 else st["p2_picks"]).append(card)
 
-    if phase == "ban"  and st["action_index"] >= len(BAN_SEQUENCE):
-        st["phase"]        = "pick"
-        st["action_index"] = 0
-    elif phase == "pick" and st["action_index"] >= len(PICK_SEQUENCE):
-        st["phase"] = "done"
+        st["action_index"] += 1
 
-    view = get_state_view(st)
-    view["lobby_id"] = lobby_id
-    return jsonify(view)
+        if phase == "ban"  and st["action_index"] >= len(BAN_SEQUENCE):
+            st["phase"]        = "pick"
+            st["action_index"] = 0
+        elif phase == "pick" and st["action_index"] >= len(PICK_SEQUENCE):
+            st["phase"] = "done"
+            st["status"] = "complete"
+
+        # Reset turn timer for the next turn
+        st["turn_started_at"] = time.time()
+        st["timer_paused_remaining"] = None
+
+        view = get_state_view(st)
+        view["lobby_id"] = lobby_id
+        return jsonify(view)
 
 
 @draft_bp.route("/api/<lobby_id>/ai_action", methods=["POST"])
@@ -234,6 +323,7 @@ def ai_action(lobby_id):
         st["action_index"] = 0
     elif phase == "pick" and st["action_index"] >= len(PICK_SEQUENCE):
         st["phase"] = "done"
+        st["status"] = "complete"
 
     view = get_state_view(st)
     view["lobby_id"] = lobby_id
@@ -249,6 +339,8 @@ def undo_action(lobby_id):
       - Undoing when phase="pick" and action_index=0 steps back into the ban phase.
       - Undoing when phase="done" steps back into the pick phase.
     Random pre-bans are never undone.
+
+    In multiplayer, only the player who made the last action can undo it.
     """
     st = _get_lobby(lobby_id)
     if st is None:
@@ -257,57 +349,103 @@ def undo_action(lobby_id):
     if st["ai_mode"]:
         return jsonify({"error": "Undo not available in AI Draft mode"}), 400
 
-    phase = st["phase"]
-    idx   = st["action_index"]
+    with st["_lock"]:
+        phase = st["phase"]
+        idx   = st["action_index"]
 
-    if phase == "setup":
-        return jsonify({"error": "Nothing to undo"}), 400
-
-    def _undo_last_ban():
-        player_bans = [b for b in st["banned"] if b["by"] != "random"]
-        if not player_bans:
-            return False
-        last = player_bans[-1]
-        st["banned"].remove(last)
-        st["pool"].append(last["card"])
-        return True
-
-    if phase == "ban":
-        if idx == 0:
+        if phase == "setup":
             return jsonify({"error": "Nothing to undo"}), 400
-        if not _undo_last_ban():
+
+        # Determine who made the last action (for token validation)
+        last_actor = None
+        if phase == "ban" and idx > 0:
+            last_actor = BAN_SEQUENCE[idx - 1]
+        elif phase == "pick" and idx == 0:
+            # Crossing back into ban phase — last actor was the last banner
+            last_actor = BAN_SEQUENCE[-1] if len(BAN_SEQUENCE) > 0 else None
+        elif phase == "pick" and idx > 0:
+            last_actor = PICK_SEQUENCE[idx - 1]
+        elif phase == "done":
+            last_actor = PICK_SEQUENCE[-1]
+
+        # Token validation — only the last-acting player can undo
+        if not st["ai_mode"]:
+            token = request.headers.get("X-Player-Token") or (request.json or {}).get("player_token")
+            if last_actor is None:
+                return jsonify({"error": "nothing_to_undo"}), 400
+            expected = st["p1_token"] if last_actor == 1 else st["p2_token"]
+            if token != expected:
+                return jsonify({"error": "not_your_undo"}), 403
+
+        def _undo_last_ban():
+            player_bans = [b for b in st["banned"] if b["by"] != "random"]
+            if not player_bans:
+                return False
+            last = player_bans[-1]
+            st["banned"].remove(last)
+            st["pool"].append(last["card"])
+            return True
+
+        if phase == "ban":
+            if idx == 0:
+                return jsonify({"error": "Nothing to undo"}), 400
+            if not _undo_last_ban():
+                return jsonify({"error": "Nothing to undo"}), 400
+            st["action_index"] -= 1
+
+        elif phase == "pick" and idx == 0:
+            if not _undo_last_ban():
+                return jsonify({"error": "Nothing to undo"}), 400
+            st["phase"]        = "ban"
+            st["action_index"] = len(BAN_SEQUENCE) - 1
+
+        elif phase == "pick":
+            prev_player = PICK_SEQUENCE[idx - 1]
+            picks_list  = st["p1_picks"] if prev_player == 1 else st["p2_picks"]
+            if not picks_list:
+                return jsonify({"error": "Nothing to undo"}), 400
+            st["pool"].append(picks_list.pop())
+            st["action_index"] -= 1
+
+        elif phase == "done":
+            prev_player = PICK_SEQUENCE[-1]
+            picks_list  = st["p1_picks"] if prev_player == 1 else st["p2_picks"]
+            if not picks_list:
+                return jsonify({"error": "Nothing to undo"}), 400
+            st["pool"].append(picks_list.pop())
+            st["phase"]        = "pick"
+            st["action_index"] = len(PICK_SEQUENCE) - 1
+            st["status"]       = "active"
+
+        else:
             return jsonify({"error": "Nothing to undo"}), 400
-        st["action_index"] -= 1
 
-    elif phase == "pick" and idx == 0:
-        if not _undo_last_ban():
-            return jsonify({"error": "Nothing to undo"}), 400
-        st["phase"]        = "ban"
-        st["action_index"] = len(BAN_SEQUENCE) - 1
+        # Reset turn timer for the restored turn
+        st["turn_started_at"] = time.time()
+        st["timer_paused_remaining"] = None
 
-    elif phase == "pick":
-        prev_player = PICK_SEQUENCE[idx - 1]
-        picks_list  = st["p1_picks"] if prev_player == 1 else st["p2_picks"]
-        if not picks_list:
-            return jsonify({"error": "Nothing to undo"}), 400
-        st["pool"].append(picks_list.pop())
-        st["action_index"] -= 1
+        view = get_state_view(st)
+        view["lobby_id"] = lobby_id
+        return jsonify(view)
 
-    elif phase == "done":
-        prev_player = PICK_SEQUENCE[-1]
-        picks_list  = st["p1_picks"] if prev_player == 1 else st["p2_picks"]
-        if not picks_list:
-            return jsonify({"error": "Nothing to undo"}), 400
-        st["pool"].append(picks_list.pop())
-        st["phase"]        = "pick"
-        st["action_index"] = len(PICK_SEQUENCE) - 1
 
-    else:
-        return jsonify({"error": "Nothing to undo"}), 400
-
-    view = get_state_view(st)
-    view["lobby_id"] = lobby_id
-    return jsonify(view)
+@draft_bp.route("/api/<lobby_id>/pause", methods=["POST"])
+def toggle_pause(lobby_id):
+    st = _get_lobby(lobby_id)
+    if st is None:
+        return jsonify({"error": "Lobby not found"}), 404
+    with st["_lock"]:
+        if st["timer_paused_remaining"] is not None:
+            # Resume: set turn_started_at so remaining time matches what was saved
+            st["turn_started_at"] = time.time() - (TURN_SECONDS - st["timer_paused_remaining"])
+            st["timer_paused_remaining"] = None
+        else:
+            # Pause: snapshot remaining time
+            elapsed = time.time() - st["turn_started_at"]
+            st["timer_paused_remaining"] = max(TURN_SECONDS - elapsed, 0)
+        view = get_state_view(st)
+        view["lobby_id"] = lobby_id
+        return jsonify(view)
 
 
 @draft_bp.route("/api/<lobby_id>/reset", methods=["POST"])

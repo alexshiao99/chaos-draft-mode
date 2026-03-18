@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { QRCodeCanvas } from 'qrcode.react'
+import { apiFetch, tokenKey, roleKey } from '../api'
 
 // ── API helper ────────────────────────────────────────────────────────────────
 async function apiCall(path, method = 'GET', body = null) {
@@ -317,6 +319,29 @@ export default function LandingPage() {
     if (!updatedList.includes(p2)) setP2(updatedList[1] ?? '')
   }
 
+  // Lobby waiting state
+  const [lobbyId, setLobbyId] = useState(null)
+  const [lobbyCopied, setLobbyCopied] = useState(false)
+
+  const joinUrl = lobbyId ? `${window.location.origin}/draft/${lobbyId}/join` : ''
+
+  // Poll for P2 join when lobby is waiting
+  useEffect(() => {
+    if (!lobbyId) return
+    const id = setInterval(async () => {
+      try {
+        const res = await apiFetch(`/api/${lobbyId}/state`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.status === 'active') {
+          clearInterval(id)
+          navigate(`/draft/${lobbyId}`)
+        }
+      } catch { /* ignore */ }
+    }, 5000)
+    return () => clearInterval(id)
+  }, [lobbyId, navigate])
+
   // Draft setup actions
   async function startDraft() {
     if (p1 === p2) { setSetupErr('❌ Player 1 and Player 2 must be different players.'); return }
@@ -325,7 +350,9 @@ export default function LandingPage() {
     try {
       const s = await apiCall('/api/start', 'POST', { p1_name: p1, p2_name: p2 })
       if (s.error) throw new Error(s.error)
-      window.open(`/draft/${s.lobby_id}`, '_blank')
+      localStorage.setItem(tokenKey(s.lobby_id), s.p1_token)
+      localStorage.setItem(roleKey(s.lobby_id), '1')
+      setLobbyId(s.lobby_id)
     } catch (e) {
       setSetupErr(`❌ ${e.message}`)
     }
@@ -339,6 +366,8 @@ export default function LandingPage() {
     try {
       const s = await apiCall('/api/start', 'POST', { p1_name: p1, p2_name: p2, ai_mode: true })
       if (s.error) throw new Error(s.error)
+      localStorage.setItem(tokenKey(s.lobby_id), s.p1_token)
+      localStorage.setItem(roleKey(s.lobby_id), '1')
       window.open(`/draft/${s.lobby_id}`, '_blank')
     } catch (e) {
       setSetupErr(`❌ ${e.message}`)
@@ -400,7 +429,40 @@ export default function LandingPage() {
 
       <main>
 
+        {/* ── Lobby waiting screen ── */}
+        {lobbyId && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', padding: '3rem 1rem', textAlign: 'center' }}>
+            <h2 style={{ fontFamily: "'Cinzel Decorative', serif", color: 'var(--gold)', fontSize: '1.3rem' }}>
+              Waiting for Player 2 to join...
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '.85rem', maxWidth: '420px' }}>
+              Share this link with your opponent. The draft will start automatically when they join.
+            </p>
+            <div style={{
+              background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '.75rem',
+              padding: '1rem', wordBreak: 'break-all', fontSize: '.85rem', maxWidth: '500px', width: '100%',
+            }}>
+              {joinUrl}
+            </div>
+            <div style={{ display: 'flex', gap: '.5rem' }}>
+              <button className="btn btn-gold" onClick={() => {
+                navigator.clipboard.writeText(joinUrl)
+                setLobbyCopied(true)
+                setTimeout(() => setLobbyCopied(false), 2000)
+              }}>
+                {lobbyCopied ? 'Copied!' : 'Copy Link'}
+              </button>
+              <button className="btn btn-ghost" onClick={() => setLobbyId(null)}>Cancel</button>
+            </div>
+            <QRCodeCanvas value={joinUrl} size={200} />
+            <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>
+              Polling every 5 seconds...
+            </div>
+          </div>
+        )}
+
         {/* ── Mode filter ── */}
+        {!lobbyId && <>
         <div className="mode-filter">
           <span className="mode-label">Mode</span>
           <div className="seg">
@@ -610,6 +672,7 @@ export default function LandingPage() {
           </Panel>
         </div>
 
+        </>}
       </main>
     </>
   )
