@@ -189,6 +189,85 @@ def _fetch_battle_modifiers(winner_name, loser_name, winner_cards, loser_cards):
     return None, None
 
 
+def _find_battle_result(p1_name, p2_name, p1_cards, p2_cards):
+    """
+    Find the most recent Crazy_Arena battle between p1 and p2 whose card sets
+    match the draft picks, and determine the actual winner from CR crowns.
+
+    Returns (winner_name, loser_name, winner_mods, loser_mods) or None if not found.
+    """
+    tags   = _load_player_tags()
+    p1_tag = tags.get(p1_name)
+    p2_tag = tags.get(p2_name)
+    if not p1_tag or not p2_tag:
+        return None
+
+    def _check_battle(battle, team_name, team_tag, opp_name, opp_tag):
+        """
+        Check a single battle fetched from team_name's log.
+        Returns (winner_name, loser_name, winner_mods, loser_mods) or None.
+        """
+        if battle.get("gameMode", {}).get("name") != CHAOS_GAME_MODE:
+            return None
+        team_list = battle.get("team", [])
+        opp_list  = battle.get("opponent", [])
+        if not team_list or not opp_list:
+            return None
+
+        # Opponent tag must match
+        if opp_list[0].get("tag") != opp_tag:
+            return None
+
+        team_cards = {c["name"] for c in team_list[0].get("cards", [])}
+        opp_cards  = {c["name"] for c in opp_list[0].get("cards", [])}
+
+        # Cards must match exactly — team == team_name's picks, opp == opp_name's picks
+        if team_name == p1_name:
+            if team_cards != p1_cards or opp_cards != p2_cards:
+                return None
+        else:
+            if team_cards != p2_cards or opp_cards != p1_cards:
+                return None
+
+        # Determine winner by crowns
+        team_crowns = team_list[0].get("crowns", 0)
+        opp_crowns  = opp_list[0].get("crowns", 0)
+        if team_crowns == opp_crowns:
+            return None  # tie or indeterminate
+
+        if team_crowns > opp_crowns:
+            w_name, w_tag, l_tag = team_name, team_tag, opp_tag
+            l_name = opp_name
+        else:
+            w_name, w_tag, l_tag = opp_name, opp_tag, team_tag
+            l_name = team_name
+
+        # Extract modifiers
+        w_mods, l_mods = [], []
+        for md in battle.get("modifiers", []):
+            t = md.get("tag")
+            if t == w_tag:
+                w_mods = md.get("modifiers", [])
+            elif t == l_tag:
+                l_mods = md.get("modifiers", [])
+
+        return w_name, l_name, w_mods[:5], l_mods[:5]
+
+    # Try p1's battle log first
+    for battle in _fetch_player_battles(p1_tag):
+        result = _check_battle(battle, p1_name, p1_tag, p2_name, p2_tag)
+        if result is not None:
+            return result
+
+    # Fallback: try p2's battle log
+    for battle in _fetch_player_battles(p2_tag):
+        result = _check_battle(battle, p2_name, p2_tag, p1_name, p1_tag)
+        if result is not None:
+            return result
+
+    return None
+
+
 def _pad_mods(mods):
     """Pad or truncate a modifier list to exactly 5 entries (empty string for missing)."""
     if not mods:
@@ -217,6 +296,74 @@ def _read_elo_for(name, game_mode_filter=""):
 
 
 # -- Routes -------------------------------------------------------------------
+
+@stats_bp.route("/api/<lobby_id>/fetch_match_result", methods=["POST"])
+def fetch_match_result(lobby_id):
+    """
+    Fetch the actual match result from the CR API by matching player tags and
+    drafted card sets, determine the winner from crowns, and write to output.csv.
+    """
+    st = lobbies.get(lobby_id)
+    if st is None:
+        return jsonify({"error": "Lobby not found"}), 404
+    if st["phase"] != "done":
+        return jsonify({"error": "Draft is not finished yet"}), 400
+
+    p1_name  = st["p1_name"]
+    p2_name  = st["p2_name"]
+    p1_cards = {c["name"] for c in st["p1_picks"]}
+    p2_cards = {c["name"] for c in st["p2_picks"]}
+
+    # Check tags are configured before attempting API calls
+    tags = _load_player_tags()
+    if not tags.get(p1_name) or not tags.get(p2_name):
+        missing = [n for n in (p1_name, p2_name) if not tags.get(n)]
+        return jsonify({"error": f"Player tag(s) not configured: {', '.join(missing)}"}), 400
+
+    result = _find_battle_result(p1_name, p2_name, p1_cards, p2_cards)
+    if result is None:
+        return jsonify({"error": "Match not found in CR API — make sure the game was played after the draft and battle log is accessible"}), 404
+
+    winner_name, loser_name, w_mods, l_mods = result
+
+    winner_player = 1 if winner_name == p1_name else 2
+    loser_player  = 2 if winner_player == 1 else 1
+    winner_picks  = st["p1_picks"] if winner_player == 1 else st["p2_picks"]
+    loser_picks   = st["p2_picks"] if winner_player == 1 else st["p1_picks"]
+
+    winner_card_names = {c["name"] for c in winner_picks}
+    loser_card_names  = {c["name"] for c in loser_picks}
+
+    winner_banned = {b["card"]["name"] for b in st["banned"] if b["by"] == winner_player}
+    loser_banned  = {b["card"]["name"] for b in st["banned"] if b["by"] == loser_player}
+    random_banned = {b["card"]["name"] for b in st["banned"] if b["by"] == "random"}
+
+    win_cols    = [1 if c in winner_card_names else 0 for c in CHAOS_CARD_LIST]
+    loss_cols   = [1 if c in loser_card_names  else 0 for c in CHAOS_CARD_LIST]
+    banned_cols = [
+        "R" if c in random_banned else
+        1   if c in winner_banned else
+        -1  if c in loser_banned  else
+        0
+        for c in CHAOS_CARD_LIST
+    ]
+
+    modifier_vals = _pad_mods(w_mods) + _pad_mods(l_mods)
+
+    _ensure_csv_headers()
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with open(CSV_FILE, "a", newline="", encoding="utf-8") as f:
+        game_mode = "AI Draft" if st["ai_mode"] else "Normal Draft"
+        csv.writer(f).writerow(
+            [game_mode, timestamp, st["1st_pick"], st["2nd_pick"], winner_name, loser_name]
+            + win_cols + loss_cols + banned_cols + modifier_vals
+        )
+
+    _refresh_elo()
+    _refresh_matchups()
+    refresh_modifiers()
+    return jsonify({"status": "saved", "winner": winner_name, "loser": loser_name})
+
 
 @stats_bp.route("/api/<lobby_id>/record_winner", methods=["POST"])
 def record_winner(lobby_id):

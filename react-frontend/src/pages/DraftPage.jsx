@@ -429,7 +429,7 @@ function TurnBar({ draft, timerSecs, timerPaused, onTogglePause, onUndo, isMyTur
   )
 }
 
-function DeckPanel({ playerName, picks, link, playerNum, onWin, wonAlready, onCopyLink }) {
+function DeckPanel({ playerName, picks, link, playerNum, onWin, wonAlready, onCopyLink, gameEnded, isFetching }) {
   const color = playerNum === 1 ? 'var(--p1)' : 'var(--p2)'
   return (
     <div className="deck-box">
@@ -463,17 +463,20 @@ function DeckPanel({ playerName, picks, link, playerNum, onWin, wonAlready, onCo
       <button
         className="btn-winner-full"
         onClick={onWin}
-        disabled={wonAlready}
+        disabled={wonAlready || isFetching}
       >
-        🏆 {playerName.toUpperCase()} WINS!
+        {gameEnded
+          ? (isFetching ? '⏳ FETCHING RESULT…' : '🏆 THE GAME HAS ENDED')
+          : `🏆 ${playerName.toUpperCase()} WINS!`}
       </button>
     </div>
   )
 }
 
-function DoneScreen({ draft, winnerInfo, onDeclareWinner, onReset, onCopyLink, aiLogOpen, setAiLogOpen }) {
+function DoneScreen({ draft, winnerInfo, fetchError, retryCountdown, onDeclareWinner, onGameEnded, isFetchingResult, onReset, onCopyLink, aiLogOpen, setAiLogOpen }) {
   const p1Link = draft.p1_deck_link || '#'
   const p2Link = draft.p2_deck_link || '#'
+  const gameEnded = !draft.ai_mode
 
   return (
     <div id="done-screen" style={{ display: 'block' }}>
@@ -486,24 +489,39 @@ function DoneScreen({ draft, winnerInfo, onDeclareWinner, onReset, onCopyLink, a
         </p>
       </div>
 
+      {fetchError && (
+        <div style={{ background: 'var(--surface2)', border: '1px solid var(--danger, #c0392b)', borderRadius: '.5rem', padding: '.75rem 1rem', marginBottom: '1rem', color: '#e74c3c', fontSize: '.85rem', textAlign: 'center' }}>
+          ⚠️ {fetchError}
+          {retryCountdown != null && (
+            <span style={{ marginLeft: '.5rem', color: 'var(--text-muted)' }}>
+              — retrying in {retryCountdown}s…
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="done-decks">
         <DeckPanel
           playerName={draft.p1_name}
           picks={draft.p1_picks || []}
           link={p1Link}
           playerNum={1}
-          onWin={() => onDeclareWinner(1)}
+          onWin={gameEnded ? onGameEnded : () => onDeclareWinner(1)}
           wonAlready={!!winnerInfo}
           onCopyLink={() => onCopyLink(1, p1Link)}
+          gameEnded={gameEnded}
+          isFetching={isFetchingResult}
         />
         <DeckPanel
           playerName={draft.p2_name}
           picks={draft.p2_picks || []}
           link={p2Link}
           playerNum={2}
-          onWin={() => onDeclareWinner(2)}
+          onWin={gameEnded ? onGameEnded : () => onDeclareWinner(2)}
           wonAlready={!!winnerInfo}
           onCopyLink={() => onCopyLink(2, p2Link)}
+          gameEnded={gameEnded}
+          isFetching={isFetchingResult}
         />
       </div>
 
@@ -590,8 +608,12 @@ export default function DraftPage() {
   const [search, setSearch]             = useState('')
   const [timerSecs, setTimerSecs]       = useState(30)
   const [timerPaused, setTimerPaused]   = useState(false)
-  const [winnerInfo, setWinnerInfo]     = useState(null)
-  const [aiThinking, setAiThinking]     = useState(false)
+  const [winnerInfo, setWinnerInfo]         = useState(null)
+  const [isFetchingResult, setIsFetchingResult] = useState(false)
+  const [fetchError, setFetchError]         = useState(null)
+  const [retryCountdown, setRetryCountdown] = useState(null)  // null | number
+  const retryIntervalRef = useRef(null)
+  const [aiThinking, setAiThinking]         = useState(false)
   const [aiLogOpen, setAiLogOpen]       = useState(false)
   const [copyMsg, setCopyMsg]           = useState({})  // { 1: bool, 2: bool }
   const [lobbyCopied, setLobbyCopied]   = useState(false)
@@ -829,6 +851,43 @@ export default function DraftPage() {
     }
   }
 
+  function _startRetryCountdown() {
+    clearInterval(retryIntervalRef.current)
+    setRetryCountdown(60)
+    retryIntervalRef.current = setInterval(() => {
+      setRetryCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(retryIntervalRef.current)
+          fetchMatchResult()  // auto-retry when countdown hits 0
+          return null
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  async function fetchMatchResult() {
+    clearInterval(retryIntervalRef.current)
+    setRetryCountdown(null)
+    setFetchError(null)
+    setIsFetchingResult(true)
+    try {
+      const res = await draftFetch(lobbyId, '/fetch_match_result', { method: 'POST' })
+      const data = await res.json()
+      if (res.status === 404) {
+        setFetchError(data.error)
+        _startRetryCountdown()
+        return
+      }
+      if (data.error) { setFetchError(data.error); return }
+      setWinnerInfo({ winner: data.winner, loser: data.loser })
+    } catch (e) {
+      setFetchError('Failed to fetch match result: ' + e.message)
+    } finally {
+      setIsFetchingResult(false)
+    }
+  }
+
   function handleCopyLink(player, link) {
     navigator.clipboard.writeText(link).then(() => {
       setCopyMsg(prev => ({ ...prev, [player]: true }))
@@ -971,7 +1030,11 @@ export default function DraftPage() {
           <DoneScreen
             draft={draft}
             winnerInfo={winnerInfo}
+            fetchError={fetchError}
+            retryCountdown={retryCountdown}
             onDeclareWinner={declareWinner}
+            onGameEnded={fetchMatchResult}
+            isFetchingResult={isFetchingResult}
             onReset={resetDraft}
             onCopyLink={handleCopyLink}
             aiLogOpen={aiLogOpen}
