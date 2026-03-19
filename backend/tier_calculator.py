@@ -24,10 +24,11 @@ def _bayesian_rating(n, win_rate):
     confidence_negative = (n / (n + 1)) ** 2
     win_rate = max(win_rate, 0.30)
     win_rate = min(win_rate, 0.70)
-    if win_rate < 0.5:
-        return round(confidence * win_rate + (1 - confidence_negative) * 0.5, 4)
-    else:
-        return round(confidence * win_rate + confidence * 0.2, 4)
+    return round(confidence * win_rate + (1 - confidence) * 0.5, 4)
+    # if win_rate < 0.5:
+    #     return round(confidence * win_rate + (1 - confidence_negative) * 0.5, 4)
+    # else:
+    #     return round(confidence * win_rate + confidence * 0.2, 4)
 
 
 def calculate_ratings(card_data_csv, output_csv):

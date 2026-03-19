@@ -429,68 +429,125 @@ function TurnBar({ draft, timerSecs, timerPaused, onTogglePause, onUndo, isMyTur
   )
 }
 
-function DeckPanel({ playerName, picks, link, playerNum, onWin, wonAlready, onCopyLink, gameEnded, isFetching }) {
+function DeckPanel({ playerName, picks, link, playerNum, oppName, oppPicks, showQr, onCopyLink, singlePanel, gameEndedBtn }) {
   const color = playerNum === 1 ? 'var(--p1)' : 'var(--p2)'
+  const smFb  = cardFallback(30)
+
+  const cardGrid = (
+    <div className="done-grid">
+      {picks.map((c, i) => (
+        <div className="done-card" key={i}>
+          <img src={c.iconUrl} alt={c.name} onError={e => { e.target.style.display = 'none' }} />
+          <div className="cn">{c.name}</div>
+        </div>
+      ))}
+    </div>
+  )
+
+  const qrBlock = showQr && (
+    <div className="qr-section">
+      <div className="qr-label">📱 SCAN TO IMPORT</div>
+      <QRCodeCanvas value={link || 'https://example.com'} size={singlePanel ? 120 : 160} />
+    </div>
+  )
+
+  const linkBlock = (
+    <a className="deck-link-url" href={link} target="_blank" rel="noreferrer">{link}</a>
+  )
+
+  const btnBlock = (
+    <div className="btn-row">
+      <button className="btn-copy-green" onClick={onCopyLink}>📋 COPY</button>
+      <a className="btn-open-cr" href={link} target="_blank" rel="noreferrer">📲 OPEN IN CR</a>
+    </div>
+  )
+
+  const avgBlock = (
+    <div className="avg-elixir-row">
+      Avg elixir: <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{avgElixir(picks)}</span>
+    </div>
+  )
+
   return (
     <div className="deck-box">
-      <div className="deck-player-name" style={{ color }}>{playerName}</div>
 
-      <div className="done-grid">
-        {picks.map((c, i) => (
-          <div className="done-card" key={i}>
-            <img src={c.iconUrl} alt={c.name} onError={e => { e.target.style.display = 'none' }} />
-            <div className="cn">{c.name}</div>
+      {/* Opponent strip — flush at top */}
+      {oppPicks && oppPicks.length > 0 && (
+        <div className="opp-strip">
+          <span className="opp-strip-label">🎯 {oppName}'s picks</span>
+          <div className="opp-strip-cards">
+            {oppPicks.map((c, i) => (
+              <img key={i} src={c.iconUrl} alt={c.name} title={c.name} onError={e => { e.target.src = smFb }} />
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
-      <a className="deck-link-url" href={link} target="_blank" rel="noreferrer">{link}</a>
-
-      <div className="btn-row" style={{ marginTop: '.75rem' }}>
-        <button className="btn btn-copy-green" onClick={onCopyLink}>📋 COPY DECK LINK</button>
-        <a className="btn btn-open-cr" href={link} target="_blank" rel="noreferrer">📲 OPEN IN CR</a>
-      </div>
-
-      <div className="qr-section">
-        <div className="qr-label">📱 SCAN TO IMPORT DECK</div>
-        <QRCodeCanvas value={link || 'https://example.com'} size={180} />
-      </div>
-
-      <div className="avg-elixir-row">
-        Avg elixir: <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{avgElixir(picks)}</span>
-      </div>
-
-      <button
-        className="btn-winner-full"
-        onClick={onWin}
-        disabled={wonAlready || isFetching}
-      >
-        {gameEnded
-          ? (isFetching ? '⏳ FETCHING RESULT…' : '🏆 THE GAME HAS ENDED')
-          : `🏆 ${playerName.toUpperCase()} WINS!`}
-      </button>
+      {singlePanel ? (
+        /* 2-column layout: left = name+cards+avg, right = QR+link+buttons */
+        <div className="deck-box-body split">
+          <div className="deck-left">
+            <div className="deck-player-name" style={{ color }}>{playerName}</div>
+            {cardGrid}
+            {avgBlock}
+            {gameEndedBtn}
+          </div>
+          <div className="deck-right">
+            {qrBlock}
+            {linkBlock}
+            {btnBlock}
+          </div>
+        </div>
+      ) : (
+        /* Stacked layout for dual-panel / spectator view */
+        <div className="deck-box-body stacked">
+          <div className="deck-player-name" style={{ color }}>{playerName}</div>
+          {cardGrid}
+          {linkBlock}
+          {btnBlock}
+          {qrBlock}
+          {avgBlock}
+        </div>
+      )}
     </div>
   )
 }
 
-function DoneScreen({ draft, winnerInfo, fetchError, retryCountdown, onDeclareWinner, onGameEnded, isFetchingResult, onReset, onCopyLink, aiLogOpen, setAiLogOpen }) {
+function DoneScreen({ draft, localRole, winnerInfo, fetchError, retryCountdown, onGameEnded, isFetchingResult, onReset, onCopyLink, aiLogOpen, setAiLogOpen }) {
   const p1Link = draft.p1_deck_link || '#'
   const p2Link = draft.p2_deck_link || '#'
-  const gameEnded = !draft.ai_mode
+
+  // Derive my deck vs opponent based on role
+  const myNum   = localRole || 1
+  const myName  = myNum === 2 ? draft.p2_name  : draft.p1_name
+  const myPicks = myNum === 2 ? (draft.p2_picks || []) : (draft.p1_picks || [])
+  const myLink  = myNum === 2 ? p2Link : p1Link
+  const oppName  = myNum === 2 ? draft.p1_name  : draft.p2_name
+  const oppPicks = myNum === 2 ? (draft.p1_picks || []) : (draft.p2_picks || [])
+
+  const btnLabel = isFetchingResult    ? '⏳ FETCHING RESULT…'
+    : retryCountdown != null           ? `⏳ RETRYING IN ${retryCountdown}S…`
+    : '🏆 THE GAME HAS ENDED'
+
+  const gameEndedBtn = !winnerInfo && (
+    <button
+      className="btn-winner-full"
+      onClick={onGameEnded}
+      disabled={isFetchingResult}
+    >
+      {btnLabel}
+    </button>
+  )
 
   return (
     <div id="done-screen" style={{ display: 'block' }}>
-      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-        <h2 style={{ fontFamily: "'Cinzel Decorative', serif", color: 'var(--gold)', fontSize: '1.4rem', marginBottom: '.4rem' }}>
-          🏆 Draft Complete!
-        </h2>
-        <p style={{ color: 'var(--text-muted)' }}>
-          Copy a deck link and open it on your phone — it imports straight into Clash Royale.
-        </p>
+      <div className="done-heading">
+        <h2>🏆 Draft Complete!</h2>
+        <p>Copy a deck link and open it on your phone — it imports straight into Clash Royale.</p>
       </div>
 
       {fetchError && (
-        <div style={{ background: 'var(--surface2)', border: '1px solid var(--danger, #c0392b)', borderRadius: '.5rem', padding: '.75rem 1rem', marginBottom: '1rem', color: '#e74c3c', fontSize: '.85rem', textAlign: 'center' }}>
+        <div style={{ background: 'var(--surface2)', border: '1px solid var(--danger, #c0392b)', borderRadius: '.5rem', padding: '.75rem 1rem', marginBottom: '.75rem', color: '#e74c3c', fontSize: '.85rem', textAlign: 'center' }}>
           ⚠️ {fetchError}
           {retryCountdown != null && (
             <span style={{ marginLeft: '.5rem', color: 'var(--text-muted)' }}>
@@ -500,30 +557,44 @@ function DoneScreen({ draft, winnerInfo, fetchError, retryCountdown, onDeclareWi
         </div>
       )}
 
-      <div className="done-decks">
-        <DeckPanel
-          playerName={draft.p1_name}
-          picks={draft.p1_picks || []}
-          link={p1Link}
-          playerNum={1}
-          onWin={gameEnded ? onGameEnded : () => onDeclareWinner(1)}
-          wonAlready={!!winnerInfo}
-          onCopyLink={() => onCopyLink(1, p1Link)}
-          gameEnded={gameEnded}
-          isFetching={isFetchingResult}
-        />
-        <DeckPanel
-          playerName={draft.p2_name}
-          picks={draft.p2_picks || []}
-          link={p2Link}
-          playerNum={2}
-          onWin={gameEnded ? onGameEnded : () => onDeclareWinner(2)}
-          wonAlready={!!winnerInfo}
-          onCopyLink={() => onCopyLink(2, p2Link)}
-          gameEnded={gameEnded}
-          isFetching={isFetchingResult}
-        />
-      </div>
+      {/* Role-based layout: single panel if we know who's viewing, dual if spectator/no role */}
+      {localRole ? (
+        <div className="done-decks single">
+          <DeckPanel
+            playerName={myName}
+            picks={myPicks}
+            link={myLink}
+            playerNum={myNum}
+            oppName={oppName}
+            oppPicks={oppPicks}
+            showQr={true}
+            singlePanel={true}
+            onCopyLink={() => onCopyLink(myNum, myLink)}
+            gameEndedBtn={gameEndedBtn}
+          />
+        </div>
+      ) : (
+        <div className="done-decks">
+          <DeckPanel
+            playerName={draft.p1_name}
+            picks={draft.p1_picks || []}
+            link={p1Link}
+            playerNum={1}
+            showQr={true}
+            singlePanel={false}
+            onCopyLink={() => onCopyLink(1, p1Link)}
+          />
+          <DeckPanel
+            playerName={draft.p2_name}
+            picks={draft.p2_picks || []}
+            link={p2Link}
+            playerNum={2}
+            showQr={true}
+            singlePanel={false}
+            onCopyLink={() => onCopyLink(2, p2Link)}
+          />
+        </div>
+      )}
 
       {/* AI reasoning log (done screen) */}
       {draft.ai_mode && draft.ai_log && draft.ai_log.length > 0 && (
@@ -785,6 +856,8 @@ export default function DraftPage() {
     if (!draft) return
     if (!draft.ai_mode) return
     if (draft.phase !== 'ban' && draft.phase !== 'pick') return
+    // Only P1 fires AI actions; P2 (and spectators) just watch via polling
+    if (localRole !== null && localRole !== 1) return
 
     setAiThinking(true)
     const t = setTimeout(async () => {
@@ -835,20 +908,6 @@ export default function DraftPage() {
   async function resetDraft() {
     await draftFetch(lobbyId, '/reset', { method: 'POST' })
     navigate('/')
-  }
-
-  async function declareWinner(player) {
-    try {
-      const res = await draftFetch(lobbyId, '/record_winner', {
-        method: 'POST',
-        body: JSON.stringify({ winner: player }),
-      })
-      const data = await res.json()
-      if (data.error) { alert('Error saving result: ' + data.error); return }
-      setWinnerInfo({ winner: data.winner, loser: data.loser })
-    } catch (e) {
-      alert('Failed to save result: ' + e.message)
-    }
   }
 
   function _startRetryCountdown() {
@@ -1029,10 +1088,10 @@ export default function DraftPage() {
         {showDone && (
           <DoneScreen
             draft={draft}
+            localRole={localRole}
             winnerInfo={winnerInfo}
             fetchError={fetchError}
             retryCountdown={retryCountdown}
-            onDeclareWinner={declareWinner}
             onGameEnded={fetchMatchResult}
             isFetchingResult={isFetchingResult}
             onReset={resetDraft}

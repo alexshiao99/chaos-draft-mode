@@ -164,10 +164,6 @@ def start_draft():
 
     st["p1_token"] = secrets.token_hex(8)
 
-    # AI drafts are single-machine — mark active immediately
-    if ai_mode:
-        st["status"] = "active"
-
     lobbies[lobby_id] = st
 
     view = get_state_view(st)
@@ -274,6 +270,9 @@ def ai_action(lobby_id):
     st = _get_lobby(lobby_id)
     if st is None:
         return jsonify({"error": "Lobby not found"}), 404
+
+    if st["status"] != "active":
+        return jsonify({"error": "lobby_not_active"}), 400
 
     phase = st["phase"]
     if phase not in ("ban", "pick"):
