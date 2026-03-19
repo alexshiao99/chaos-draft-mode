@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { CARD_TIER } from '../data/cardTiers'
 import { TIER_COLORS } from '../data/tierColors'
+import useAuth from '../hooks/useAuth'
 
 // ── Matchup group/sort helpers ────────────────────────────────────────────────
 
@@ -199,6 +200,7 @@ function MatchupTable({ matchups, groupMode, setGroupMode, showZero, setShowZero
 export default function CardDetailPage() {
   const { cardName } = useParams()
   const decodedName  = decodeURIComponent(cardName || '')
+  const { player: loggedInPlayer, logout } = useAuth()
 
   const [data,      setData]      = useState(null)
   const [loading,   setLoading]   = useState(true)
@@ -249,6 +251,9 @@ export default function CardDetailPage() {
           <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Home</Link>
             <Link to="/stats" className="back-btn">← Card Stats</Link>
+            <button onClick={logout} style={{ color: 'var(--text-muted)', fontSize: '.85rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+              Logout ({loggedInPlayer})
+            </button>
           </nav>
         </header>
         <main>
@@ -269,6 +274,9 @@ export default function CardDetailPage() {
           <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Home</Link>
             <Link to="/stats" className="back-btn">← Card Stats</Link>
+            <button onClick={logout} style={{ color: 'var(--text-muted)', fontSize: '.85rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+              Logout ({loggedInPlayer})
+            </button>
           </nav>
         </header>
         <main>
@@ -308,6 +316,9 @@ export default function CardDetailPage() {
         <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Home</Link>
           <Link to="/stats" className="back-btn">← Card Stats</Link>
+          <button onClick={logout} style={{ color: 'var(--text-muted)', fontSize: '.85rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+            Logout ({loggedInPlayer})
+          </button>
         </nav>
       </header>
 

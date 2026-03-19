@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CARD_TIER, TIER_ICONS } from '../data/cardTiers'
 import { CARD_TYPE, TYPE_ICONS } from '../data/cardTypes'
+import useAuth from '../hooks/useAuth'
 
 const MODES = ['All', 'Normal Draft', 'AI Draft']
 
@@ -391,6 +392,7 @@ function Leaderboard({ mode }) {
 export default function PlayerStatsPage() {
   const { playerName } = useParams()
   const [mode, setMode] = useState('All')
+  const { player: loggedInPlayer, logout } = useAuth()
 
   return (
     <div>
@@ -399,6 +401,9 @@ export default function PlayerStatsPage() {
         <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Home</Link>
           <Link to="/stats" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Card Stats</Link>
+          <button onClick={logout} style={{ color: 'var(--text-muted)', fontSize: '.85rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+            Logout ({loggedInPlayer})
+          </button>
         </nav>
       </header>
 
