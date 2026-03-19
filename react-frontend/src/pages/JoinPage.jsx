@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { apiFetch, tokenKey, roleKey } from '../api'
+import useAuth, { getLoggedInPlayer } from '../hooks/useAuth'
 
 export default function JoinPage() {
   const { lobbyId } = useParams()
   const navigate = useNavigate()
+  const { player: loggedInPlayer, logout } = useAuth()
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -20,8 +22,22 @@ export default function JoinPage() {
       return
     }
 
-    apiFetch(`/api/${lobbyId}/join`, { method: "POST" })
+    const loggedIn = getLoggedInPlayer()
+
+    // Fetch lobby state to verify the logged-in player is P2
+    apiFetch(`/api/${lobbyId}/state`)
       .then(async (res) => {
+        if (!res.ok) { setError("Lobby not found or expired."); return }
+        const state = await res.json()
+        if (loggedIn && loggedIn !== state.p2_name) {
+          setError(`Only ${state.p2_name} can join this lobby.`)
+          return
+        }
+        // Player matches — proceed to join
+        return apiFetch(`/api/${lobbyId}/join`, { method: "POST" })
+      })
+      .then(async (res) => {
+        if (!res) return // error already set
         if (res.status === 404) { setError("Lobby not found or expired."); return }
         if (res.status === 403) {
           const body = await res.json().catch(() => ({}))
@@ -43,6 +59,9 @@ export default function JoinPage() {
     <>
       <header>
         <span className="header-title">CHAOS Draft</span>
+        <button onClick={logout} style={{ color: 'var(--text-muted)', fontSize: '.85rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+          Logout ({loggedInPlayer})
+        </button>
       </header>
       <main style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
         {error ? (

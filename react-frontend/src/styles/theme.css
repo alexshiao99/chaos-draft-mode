@@ -284,7 +284,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 1.2rem 1rem; }
 /* Player detail */
 .detail-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
 .detail-name { font-family: 'Cinzel Decorative', serif; font-size: clamp(1.2rem, 3vw, 2rem); color: var(--gold); }
-.stat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .75rem; margin-bottom: 1.5rem; }
+.stat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-bottom: 1.5rem; }
 .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: .65rem; padding: .85rem .75rem; text-align: center; }
 .stat-card .value { font-family: 'Rajdhani', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--gold); line-height: 1; }
 .stat-card .label { font-size: .7rem; color: var(--text-muted); margin-top: .3rem; text-transform: uppercase; letter-spacing: .06em; }

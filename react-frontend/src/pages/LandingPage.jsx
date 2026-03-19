@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { QRCodeCanvas } from 'qrcode.react'
 import { apiFetch, tokenKey, roleKey } from '../api'
+import useAuth from '../hooks/useAuth'
 
 // ── API helper ────────────────────────────────────────────────────────────────
 async function apiCall(path, method = 'GET', body = null) {
@@ -263,6 +264,7 @@ const MODES = ['All', 'Normal Draft', 'AI Draft']
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const navigate = useNavigate()
+  const { player: loggedInPlayer, logout } = useAuth()
 
   // Mode filter
   const [mode, setMode] = useState('All')
@@ -270,7 +272,7 @@ export default function LandingPage() {
 
   // Players loaded from API
   const [players, setPlayers] = useState([])
-  const [p1, setP1]           = useState('')
+  const [p1, setP1]           = useState(loggedInPlayer || '')
   const [p2, setP2]           = useState('')
 
   // Add-player modal
@@ -293,8 +295,14 @@ export default function LandingPage() {
       .then(list => {
         if (Array.isArray(list) && list.length > 0) {
           setPlayers(list)
-          setP1(list[0])
-          setP2(list[1] ?? list[0])
+          if (loggedInPlayer) {
+            setP1(loggedInPlayer)
+            const other = list.find(n => n !== loggedInPlayer) ?? list[0]
+            setP2(other)
+          } else {
+            setP1(list[0])
+            setP2(list[1] ?? list[0])
+          }
         }
       })
       .catch(() => {}) // fallback handled below via playerStats
@@ -376,10 +384,19 @@ export default function LandingPage() {
     setAiLoading(false)
   }
 
-  function swapPlayers() {
-    setP1(p2)
-    setP2(p1)
-  }
+  // Active lobbies
+  const [activeLobbies, setActiveLobbies] = useState([])
+  const fetchLobbies = useCallback(() => {
+    fetch('/api/lobbies')
+      .then(r => r.json())
+      .then(list => { if (Array.isArray(list)) setActiveLobbies(list) })
+      .catch(() => {})
+  }, [])
+  useEffect(() => {
+    fetchLobbies()
+    const id = setInterval(fetchLobbies, 5000)
+    return () => clearInterval(id)
+  }, [fetchLobbies])
 
   // Derived dashboard data
   const totalGames = cardStats?.[0]?.total_games ?? 0
@@ -425,6 +442,9 @@ export default function LandingPage() {
         <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <Link to="/player_stats" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Players</Link>
           <Link to="/stats"        style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Card Stats</Link>
+          <button onClick={logout} style={{ color: 'var(--text-muted)', fontSize: '.85rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+            Logout ({loggedInPlayer})
+          </button>
         </nav>
       </header>
 
@@ -480,28 +500,15 @@ export default function LandingPage() {
           <div id="setup-screen">
             <h2>Draft Setup</h2>
             <div className="field">
-              <label>Player 1 Name</label>
-              <select value={p1} onChange={e => setP1(e.target.value)}>
-                {players.map(name => <option key={name} value={name}>{name}</option>)}
+              <label>Player 1 (You)</label>
+              <select value={p1} disabled style={{ opacity: 0.6, cursor: 'not-allowed' }}>
+                <option value={p1}>{p1}</option>
               </select>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '.1rem 0' }}>
-              <button
-                onClick={swapPlayers}
-                title="Swap players"
-                style={{
-                  background: 'transparent', border: '1px solid var(--border)', borderRadius: '999px',
-                  color: 'var(--text-muted)', cursor: 'pointer', fontSize: '.85rem',
-                  padding: '.25rem .75rem', transition: 'all .15s',
-                }}
-              >
-                ⇅ Swap
-              </button>
             </div>
             <div className="field">
               <label>Player 2 Name</label>
               <select value={p2} onChange={e => setP2(e.target.value)}>
-                {players.map(name => <option key={name} value={name}>{name}</option>)}
+                {players.filter(name => name !== loggedInPlayer).map(name => <option key={name} value={name}>{name}</option>)}
               </select>
             </div>
             {p1 === p2 && (
@@ -553,6 +560,74 @@ export default function LandingPage() {
                 sub={topPlayer && !eloLoading ? `${topPlayer.elo} ELO · ${topPlayer.wins}W ${topPlayer.losses}L` : undefined}
               />
               <StatCard label="Cards in Pool" value={cardsLoading ? '—' : (cardStats?.length ?? 0)} sub="50-card CHAOS pool" />
+            </div>
+
+            {/* ── Active lobbies ── */}
+            <div style={{ marginTop: '1rem' }}>
+              <Panel>
+                <PanelHeader>🎮 Active Lobbies</PanelHeader>
+                {activeLobbies.length === 0 ? <EmptyState>No active lobbies.</EmptyState> : (
+                  <ul style={{ listStyle: 'none' }}>
+                    {activeLobbies.map(lobby => {
+                      const age = lobby.age_seconds
+                      const ageStr = age < 60 ? `${age}s ago` : age < 3600 ? `${Math.floor(age / 60)}m ago` : `${Math.floor(age / 3600)}h ago`
+                      const phaseLabel = lobby.phase === 'ban' ? 'Banning' : lobby.phase === 'pick' ? 'Picking' : lobby.phase === 'done' ? 'Complete' : lobby.phase
+                      const statusLabel = lobby.status === 'waiting_for_p2' ? 'Waiting for P2' : lobby.status === 'active' ? phaseLabel : lobby.status === 'complete' ? 'Complete' : lobby.status
+
+                      const statusColor = lobby.status === 'waiting_for_p2' ? 'var(--gold)'
+                        : lobby.status === 'complete' ? 'var(--text-muted)'
+                        : 'var(--win)'
+
+                      const canJoin = loggedInPlayer === lobby.p1_name || loggedInPlayer === lobby.p2_name
+
+                      return (
+                        <li
+                          key={lobby.lobby_id}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '.75rem',
+                            padding: '.6rem .9rem', borderBottom: '1px solid rgba(42,48,80,.5)',
+                            cursor: canJoin ? 'pointer' : 'default',
+                            opacity: canJoin ? 1 : 0.45,
+                          }}
+                          onClick={() => {
+                            const isP1 = loggedInPlayer === lobby.p1_name
+                            const isP2 = loggedInPlayer === lobby.p2_name
+                            if (!isP1 && !isP2) return
+                            if (lobby.status === 'waiting_for_p2' && isP2) {
+                              navigate(`/draft/${lobby.lobby_id}/join`)
+                            } else {
+                              navigate(`/draft/${lobby.lobby_id}`)
+                            }
+                          }}
+                        >
+                          {/* Players */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '.85rem', fontWeight: 600 }}>
+                              {lobby.p1_name}
+                              <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> vs </span>
+                              {lobby.p2_name}
+                              {lobby.ai_mode && <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: 'var(--text-muted)' }}>🤖</span>}
+                            </div>
+                            <div style={{ fontSize: '.72rem', color: 'var(--text-muted)' }}>
+                              {lobby.picks > 0 ? `${lobby.picks} picks` : ''}{lobby.picks > 0 && lobby.bans > 0 ? ' · ' : ''}{lobby.bans > 0 ? `${lobby.bans} bans` : ''}{lobby.picks === 0 && lobby.bans === 0 ? 'Just started' : ''}
+                              {' · '}{ageStr}
+                            </div>
+                          </div>
+
+                          {/* Status badge */}
+                          <span style={{
+                            fontSize: '.72rem', fontWeight: 700, padding: '.2rem .6rem',
+                            borderRadius: '999px', border: `1px solid ${statusColor}`,
+                            color: statusColor, whiteSpace: 'nowrap',
+                          }}>
+                            {statusLabel}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </Panel>
             </div>
           </div>
         </div>
