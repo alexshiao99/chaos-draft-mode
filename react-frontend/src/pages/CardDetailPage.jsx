@@ -6,28 +6,30 @@ import { TIER_COLORS } from '../data/tierColors'
 // ── Matchup group/sort helpers ────────────────────────────────────────────────
 
 function wrChipClass(wr, gp) {
-  if (gp === 0)  return 'wr-chip wr-none'
-  if (wr >= 60)  return 'wr-chip wr-hot'
-  if (wr >= 45)  return 'wr-chip wr-warm'
-  return              'wr-chip wr-cold'
+  if (gp === 0) return 'wr-chip wr-none'
+  if (wr >= 60) return 'wr-chip wr-hot'
+  if (wr >= 45) return 'wr-chip wr-warm'
+  return 'wr-chip wr-cold'
 }
 
 function mrChipClass(mr) {
-  if (mr == null)       return 'wr-chip wr-none'
-  if (mr >= 0.60)       return 'wr-chip wr-hot'
-  if (mr >= 0.45)       return 'wr-chip wr-warm'
-  return                     'wr-chip wr-cold'
+  if (mr == null) return 'wr-chip wr-none'
+  if (mr >= 0.6) return 'wr-chip wr-hot'
+  if (mr >= 0.45) return 'wr-chip wr-warm'
+  return 'wr-chip wr-cold'
 }
 
 function sortMatchups(rows, groupMode) {
   return [...rows].sort((a, b) => {
     if (groupMode === 'win_rate') {
-      const av = a.win_rate ?? -1, bv = b.win_rate ?? -1
+      const av = a.win_rate ?? -1,
+        bv = b.win_rate ?? -1
       if (bv !== av) return bv - av
       return b.games_played - a.games_played
     }
     if (groupMode === 'matchup_rating') {
-      const av = a.matchup_rating ?? -1, bv = b.matchup_rating ?? -1
+      const av = a.matchup_rating ?? -1,
+        bv = b.matchup_rating ?? -1
       if (bv !== av) return bv - av
       return b.games_played - a.games_played
     }
@@ -45,17 +47,19 @@ function cardFallback(size = 34) {
 
 function MatchupRow({ row }) {
   const fb = cardFallback(34)
-  const gpDisplay = row.games_played
-    ? row.games_played
-    : <span style={{ opacity: .35 }}>0</span>
-  const wDisplay = row.games_played
-    ? (row.card_1_W || <span style={{ opacity: .5 }}>0</span>)
-    : <span style={{ opacity: .35 }}>—</span>
-  const lDisplay = row.games_played
-    ? (row.card_1_L || <span style={{ opacity: .5 }}>0</span>)
-    : <span style={{ opacity: .35 }}>—</span>
-  const wrVal  = row.games_played && row.win_rate != null ? `${row.win_rate}%` : '—'
-  const mrVal  = row.matchup_rating != null ? (row.matchup_rating * 100).toFixed(1) : '—'
+  const gpDisplay = row.games_played ? row.games_played : <span style={{ opacity: 0.35 }}>0</span>
+  const wDisplay = row.games_played ? (
+    row.card_1_W || <span style={{ opacity: 0.5 }}>0</span>
+  ) : (
+    <span style={{ opacity: 0.35 }}>—</span>
+  )
+  const lDisplay = row.games_played ? (
+    row.card_1_L || <span style={{ opacity: 0.5 }}>0</span>
+  ) : (
+    <span style={{ opacity: 0.35 }}>—</span>
+  )
+  const wrVal = row.games_played && row.win_rate != null ? `${row.win_rate}%` : '—'
+  const mrVal = row.matchup_rating != null ? (row.matchup_rating * 100).toFixed(1) : '—'
 
   return (
     <tr>
@@ -64,7 +68,9 @@ function MatchupRow({ row }) {
           className="card-img-sm"
           src={row.card_2_iconUrl || fb}
           alt={row.card_2}
-          onError={e => { e.target.src = fb }}
+          onError={(e) => {
+            e.target.src = fb
+          }}
         />
         {row.card_2}
       </td>
@@ -84,65 +90,93 @@ function MatchupRow({ row }) {
 function GroupHeaderRow({ label, count, color }) {
   return (
     <tr className="group-header">
-      <td colSpan={6} style={{ color }}>{label} ({count})</td>
+      <td colSpan={6} style={{ color }}>
+        {label} ({count})
+      </td>
     </tr>
   )
 }
 
 function MatchupTable({ matchups, groupMode, setGroupMode, showZero, setShowZero }) {
-  const seen   = matchups.filter(r => r.games_played > 0)
-  const unseen = matchups.filter(r => r.games_played === 0)
+  const seen = matchups.filter((r) => r.games_played > 0)
+  const unseen = matchups.filter((r) => r.games_played === 0)
 
   const groupOptions = [
-    { key: 'win_rate',       label: 'By Win Rate'   },
-    { key: 'matchup_rating', label: 'By Rating'     },
-    { key: 'name',           label: 'Alphabetical'  },
-    { key: 'games_played',   label: 'By Games'      },
+    { key: 'win_rate', label: 'By Win Rate' },
+    { key: 'matchup_rating', label: 'By Rating' },
+    { key: 'name', label: 'Alphabetical' },
+    { key: 'games_played', label: 'By Games' },
   ]
 
   let rows = null
 
   if (groupMode === 'win_rate' && seen.length > 0) {
-    const favourable = sortMatchups(seen.filter(r => r.win_rate >= 55), groupMode)
-    const even       = sortMatchups(seen.filter(r => r.win_rate >= 45 && r.win_rate < 55), groupMode)
-    const unfav      = sortMatchups(seen.filter(r => r.win_rate < 45), groupMode)
+    const favourable = sortMatchups(
+      seen.filter((r) => r.win_rate >= 55),
+      groupMode,
+    )
+    const even = sortMatchups(
+      seen.filter((r) => r.win_rate >= 45 && r.win_rate < 55),
+      groupMode,
+    )
+    const unfav = sortMatchups(
+      seen.filter((r) => r.win_rate < 45),
+      groupMode,
+    )
     rows = (
       <>
         {favourable.length > 0 && (
           <>
             <GroupHeaderRow label="✅ Favourable" count={favourable.length} color="var(--green)" />
-            {favourable.map((r, i) => <MatchupRow key={i} row={r} />)}
+            {favourable.map((r, i) => (
+              <MatchupRow key={i} row={r} />
+            ))}
           </>
         )}
         {even.length > 0 && (
           <>
             <GroupHeaderRow label="⚖️ Even" count={even.length} color="var(--gold)" />
-            {even.map((r, i) => <MatchupRow key={i} row={r} />)}
+            {even.map((r, i) => (
+              <MatchupRow key={i} row={r} />
+            ))}
           </>
         )}
         {unfav.length > 0 && (
           <>
             <GroupHeaderRow label="❌ Unfavourable" count={unfav.length} color="var(--red)" />
-            {unfav.map((r, i) => <MatchupRow key={i} row={r} />)}
+            {unfav.map((r, i) => (
+              <MatchupRow key={i} row={r} />
+            ))}
           </>
         )}
         {seen.length === 0 && (
-          <tr><td colSpan={6} className="empty">No matchup data yet.</td></tr>
+          <tr>
+            <td colSpan={6} className="empty">
+              No matchup data yet.
+            </td>
+          </tr>
         )}
       </>
     )
   } else {
     const sorted = sortMatchups(seen, groupMode)
-    rows = sorted.length > 0
-      ? sorted.map((r, i) => <MatchupRow key={i} row={r} />)
-      : <tr><td colSpan={6} className="empty">No matchup data yet.</td></tr>
+    rows =
+      sorted.length > 0 ? (
+        sorted.map((r, i) => <MatchupRow key={i} row={r} />)
+      ) : (
+        <tr>
+          <td colSpan={6} className="empty">
+            No matchup data yet.
+          </td>
+        </tr>
+      )
   }
 
   return (
     <>
       <div className="mu-controls">
         <div className="mu-seg" id="mu-group-seg">
-          {groupOptions.map(opt => (
+          {groupOptions.map((opt) => (
             <button
               key={opt.key}
               className={groupMode === opt.key ? 'active' : ''}
@@ -153,11 +187,7 @@ function MatchupTable({ matchups, groupMode, setGroupMode, showZero, setShowZero
           ))}
         </div>
         <label className="show-zero-label">
-          <input
-            type="checkbox"
-            checked={showZero}
-            onChange={e => setShowZero(e.target.checked)}
-          />
+          <input type="checkbox" checked={showZero} onChange={(e) => setShowZero(e.target.checked)} />
           Show unseen matchups
         </label>
       </div>
@@ -178,11 +208,7 @@ function MatchupTable({ matchups, groupMode, setGroupMode, showZero, setShowZero
             {rows}
             {showZero && unseen.length > 0 && (
               <>
-                <GroupHeaderRow
-                  label="🔲 Not Yet Seen"
-                  count={unseen.length}
-                  color="var(--text-muted)"
-                />
+                <GroupHeaderRow label="🔲 Not Yet Seen" count={unseen.length} color="var(--text-muted)" />
                 {sortMatchups(unseen, groupMode === 'win_rate' ? 'name' : groupMode).map((r, i) => (
                   <MatchupRow key={i} row={r} />
                 ))}
@@ -198,29 +224,38 @@ function MatchupTable({ matchups, groupMode, setGroupMode, showZero, setShowZero
 // ── Main CardDetailPage ───────────────────────────────────────────────────────
 export default function CardDetailPage() {
   const { cardName } = useParams()
-  const decodedName  = decodeURIComponent(cardName || '')
+  const decodedName = decodeURIComponent(cardName || '')
 
-  const [data,      setData]      = useState(null)
-  const [loading,   setLoading]   = useState(true)
-  const [error,     setError]     = useState(null)
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [groupMode, setGroupMode] = useState('win_rate')
-  const [showZero,  setShowZero]  = useState(false)
+  const [showZero, setShowZero] = useState(false)
 
   // ── Fetch card detail ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (!decodedName) { setLoading(false); return }
+    if (!decodedName) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     fetch(`/api/card_detail/${encodeURIComponent(decodedName)}`)
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false) })
-      .catch(e => { setError(e.message); setLoading(false) })
+      .then((r) => r.json())
+      .then((d) => {
+        setData(d)
+        setLoading(false)
+      })
+      .catch((e) => {
+        setError(e.message)
+        setLoading(false)
+      })
   }, [decodedName])
 
   // ── Tier theme (CSS variables) ──────────────────────────────────────────────
   useEffect(() => {
     if (!data) return
     const tier = CARD_TIER[data.overall.name] || 'F'
-    const tc   = TIER_COLORS[tier] || TIER_COLORS['F']
+    const tc = TIER_COLORS[tier] || TIER_COLORS['F']
     document.documentElement.style.setProperty('--tier-color', tc.color)
     document.documentElement.style.setProperty('--tier-glow', tc.glow)
     document.title = `${data.overall.name} — CR Draft`
@@ -234,7 +269,7 @@ export default function CardDetailPage() {
   useEffect(() => {
     if (!data) return
     requestAnimationFrame(() => {
-      document.querySelectorAll('.stat-bar-fill[data-pct]').forEach(el => {
+      document.querySelectorAll('.stat-bar-fill[data-pct]').forEach((el) => {
         el.style.width = el.dataset.pct + '%'
       })
     })
@@ -247,8 +282,12 @@ export default function CardDetailPage() {
         <header>
           <div className="header-title">⚔️ Card Profile</div>
           <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Home</Link>
-            <Link to="/stats" className="back-btn">← Card Stats</Link>
+            <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>
+              Home
+            </Link>
+            <Link to="/stats" className="back-btn">
+              ← Card Stats
+            </Link>
           </nav>
         </header>
         <main>
@@ -267,8 +306,12 @@ export default function CardDetailPage() {
         <header>
           <div className="header-title">⚔️ Card Profile</div>
           <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Home</Link>
-            <Link to="/stats" className="back-btn">← Card Stats</Link>
+            <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>
+              Home
+            </Link>
+            <Link to="/stats" className="back-btn">
+              ← Card Stats
+            </Link>
           </nav>
         </header>
         <main>
@@ -280,40 +323,42 @@ export default function CardDetailPage() {
     )
   }
 
-  const o   = data.overall
+  const o = data.overall
   const tier = CARD_TIER[o.name] || 'F'
 
   // Stat card value/color helpers
-  const wpClass    = o.win_rate >= 55 ? 'sc-green' : o.win_rate <= 40 ? 'sc-red' : 'sc-gold'
-  const ratingVal  = o.overall_rating != null ? (o.overall_rating * 100).toFixed(1) : '—'
-  const ratingPct  = o.overall_rating != null ? o.overall_rating * 100 : null
-  const ratingClass = ratingPct == null
-    ? 'sc-gold'
-    : ratingPct >= 55 ? 'sc-green'
-    : ratingPct <= 40 ? 'sc-red'
-    : 'sc-gold'
+  const wpClass = o.win_rate >= 55 ? 'sc-green' : o.win_rate <= 40 ? 'sc-red' : 'sc-gold'
+  const ratingVal = o.overall_rating != null ? (o.overall_rating * 100).toFixed(1) : '—'
+  const ratingPct = o.overall_rating != null ? o.overall_rating * 100 : null
+  const ratingClass =
+    ratingPct == null ? 'sc-gold' : ratingPct >= 55 ? 'sc-green' : ratingPct <= 40 ? 'sc-red' : 'sc-gold'
 
   const playPct = Math.min(o.play_rate || 0, 100)
-  const winPct  = o.win_rate   || 0
-  const banPct  = Math.min((o.ban_rate || 0) * 2, 100)
+  const winPct = o.win_rate || 0
+  const banPct = Math.min((o.ban_rate || 0) * 2, 100)
 
-  const seen = (data.matchups || []).filter(r => r.games_played > 0)
+  const seen = (data.matchups || []).filter((r) => r.games_played > 0)
 
   const fb200 = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='%23111'/%3E%3Ctext x='100' y='110' text-anchor='middle' fill='%23444' font-size='64'%3E%3F%3C/text%3E%3C/svg%3E`
 
   return (
     <>
       <header>
-        <div className="header-title" id="header-title">⚔️ {o.name}</div>
+        <div className="header-title" id="header-title">
+          ⚔️ {o.name}
+        </div>
         <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Home</Link>
-          <Link to="/stats" className="back-btn">← Card Stats</Link>
+          <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>
+            Home
+          </Link>
+          <Link to="/stats" className="back-btn">
+            ← Card Stats
+          </Link>
         </nav>
       </header>
 
       <main>
         <div id="page-content">
-
           {/* ── HERO ── */}
           <div className="hero fade-in">
             {/* Portrait */}
@@ -324,13 +369,17 @@ export default function CardDetailPage() {
                 className="card-portrait"
                 src={o.iconUrl || fb200}
                 alt={o.name}
-                onError={e => { e.target.src = fb200 }}
+                onError={(e) => {
+                  e.target.src = fb200
+                }}
               />
             </div>
 
             {/* Hero right */}
             <div className="hero-right">
-              <div className="card-name-badge" id="card-name-badge">{o.name}</div>
+              <div className="card-name-badge" id="card-name-badge">
+                {o.name}
+              </div>
               <div className="card-meta-row" id="card-meta-row">
                 <span className="tier-badge">{tier}</span>
                 <span className="rarity-badge">{o.rarity || '—'}</span>
@@ -371,41 +420,23 @@ export default function CardDetailPage() {
                   <div className="stat-bar-row">
                     <div className="stat-bar-label">Play Rate</div>
                     <div className="stat-bar-track">
-                      <div
-                        className="stat-bar-fill fill-play"
-                        data-pct={playPct}
-                        style={{ width: 0 }}
-                      />
+                      <div className="stat-bar-fill fill-play" data-pct={playPct} style={{ width: 0 }} />
                     </div>
-                    <div className="stat-bar-pct">
-                      {o.games_played ? `${o.play_rate}%` : '—'}
-                    </div>
+                    <div className="stat-bar-pct">{o.games_played ? `${o.play_rate}%` : '—'}</div>
                   </div>
                   <div className="stat-bar-row">
                     <div className="stat-bar-label">Win Rate</div>
                     <div className="stat-bar-track">
-                      <div
-                        className="stat-bar-fill fill-win"
-                        data-pct={winPct}
-                        style={{ width: 0 }}
-                      />
+                      <div className="stat-bar-fill fill-win" data-pct={winPct} style={{ width: 0 }} />
                     </div>
-                    <div className="stat-bar-pct">
-                      {o.games_played ? `${o.win_rate}%` : '—'}
-                    </div>
+                    <div className="stat-bar-pct">{o.games_played ? `${o.win_rate}%` : '—'}</div>
                   </div>
                   <div className="stat-bar-row">
                     <div className="stat-bar-label">Ban Rate</div>
                     <div className="stat-bar-track">
-                      <div
-                        className="stat-bar-fill fill-ban"
-                        data-pct={banPct}
-                        style={{ width: 0 }}
-                      />
+                      <div className="stat-bar-fill fill-ban" data-pct={banPct} style={{ width: 0 }} />
                     </div>
-                    <div className="stat-bar-pct">
-                      {o.total_games ? `${o.ban_rate}%` : '—'}
-                    </div>
+                    <div className="stat-bar-pct">{o.total_games ? `${o.ban_rate}%` : '—'}</div>
                   </div>
                 </div>
               </div>
@@ -428,7 +459,6 @@ export default function CardDetailPage() {
               setShowZero={setShowZero}
             />
           </div>
-
         </div>
       </main>
     </>

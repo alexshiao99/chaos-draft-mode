@@ -5,7 +5,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "format": "prettier --write \"src/**/*.{js,jsx,css}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,css}\"",
+    "prepare": "cd .. && husky || true"
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx,css}": "prettier --write"
   },
   "dependencies": {
     "qrcode.react": "^3.1.0",
@@ -16,7 +22,10 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "postcss": "^8.4.47",
+    "prettier": "^3.8.1",
     "tailwindcss": "^3.4.15",
     "vite": "^6.0.1"
   }

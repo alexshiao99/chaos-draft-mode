@@ -13,7 +13,9 @@ function WrBar({ pct }) {
       <div className="wr-bar">
         <div className="wr-bar-fill" style={{ width: `${pct}%`, background: color }} />
       </div>
-      <span className="wr-pct" style={{ color }}>{pct}%</span>
+      <span className="wr-pct" style={{ color }}>
+        {pct}%
+      </span>
     </div>
   )
 }
@@ -32,19 +34,15 @@ function MhCard({ match, playerName }) {
   const myPicks = match['1st_pick'] === playerName ? match.first_picks : match.second_picks
   const oppPicks = match['1st_pick'] === playerName ? match.second_picks : match.first_picks
 
-  const bans = (match.bans || []).filter(b => b.by === playerName || b.by === 'player' || (b.banned_by === playerName))
+  const bans = (match.bans || []).filter((b) => b.by === playerName || b.by === 'player' || b.banned_by === playerName)
 
   return (
     <div className="mh-game">
       <div className="mh-header">
-        <span style={{ color: won ? 'var(--win)' : 'var(--loss)', fontWeight: 700 }}>
-          {won ? '✓ WIN' : '✗ LOSS'}
-        </span>
+        <span style={{ color: won ? 'var(--win)' : 'var(--loss)', fontWeight: 700 }}>{won ? '✓ WIN' : '✗ LOSS'}</span>
         <span style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
           <ModeBadge mode={match.game_mode} />
-          {match.timestamp && (
-            <span>{new Date(match.timestamp).toLocaleDateString()}</span>
-          )}
+          {match.timestamp && <span>{new Date(match.timestamp).toLocaleDateString()}</span>}
         </span>
         <span>vs {opponentName}</span>
       </div>
@@ -55,11 +53,16 @@ function MhCard({ match, playerName }) {
           </div>
           <div className="mh-section-label">Deck</div>
           <div className="mh-card-row">
-            {(myPicks || []).map(card => (
-              card.iconUrl
-                ? <img key={card.name} src={card.iconUrl} alt={card.name} title={card.name} className="mh-card-img" />
-                : <div key={card.name} style={{ width: 36, height: 36, borderRadius: '.25rem', background: 'var(--surface2)' }} />
-            ))}
+            {(myPicks || []).map((card) =>
+              card.iconUrl ? (
+                <img key={card.name} src={card.iconUrl} alt={card.name} title={card.name} className="mh-card-img" />
+              ) : (
+                <div
+                  key={card.name}
+                  style={{ width: 36, height: 36, borderRadius: '.25rem', background: 'var(--surface2)' }}
+                />
+              ),
+            )}
           </div>
         </div>
         <div className="mh-divider" />
@@ -69,11 +72,16 @@ function MhCard({ match, playerName }) {
           </div>
           <div className="mh-section-label">Deck</div>
           <div className="mh-card-row">
-            {(oppPicks || []).map(card => (
-              card.iconUrl
-                ? <img key={card.name} src={card.iconUrl} alt={card.name} title={card.name} className="mh-card-img" />
-                : <div key={card.name} style={{ width: 36, height: 36, borderRadius: '.25rem', background: 'var(--surface2)' }} />
-            ))}
+            {(oppPicks || []).map((card) =>
+              card.iconUrl ? (
+                <img key={card.name} src={card.iconUrl} alt={card.name} title={card.name} className="mh-card-img" />
+              ) : (
+                <div
+                  key={card.name}
+                  style={{ width: 36, height: 36, borderRadius: '.25rem', background: 'var(--surface2)' }}
+                />
+              ),
+            )}
           </div>
         </div>
       </div>
@@ -95,22 +103,26 @@ function PlayerCardStats({ playerName, mode }) {
     const params = new URLSearchParams()
     if (mode !== 'All') params.set('game_mode', mode)
     Promise.all([
-      fetch(`/api/player_stats/${encodeURIComponent(playerName)}?${params}`).then(r => r.json()),
-      fetch('/api/card_stats').then(r => r.json()),
-    ]).then(([playerData, cardStats]) => {
-      setData(playerData)
-      const ratings = {}
-      if (Array.isArray(cardStats)) {
-        cardStats.forEach(c => { if (c.overall_rating != null) ratings[c.name] = c.overall_rating })
-      }
-      setOverallRatings(ratings)
-      setLoading(false)
-    }).catch(() => setLoading(false))
+      fetch(`/api/player_stats/${encodeURIComponent(playerName)}?${params}`).then((r) => r.json()),
+      fetch('/api/card_stats').then((r) => r.json()),
+    ])
+      .then(([playerData, cardStats]) => {
+        setData(playerData)
+        const ratings = {}
+        if (Array.isArray(cardStats)) {
+          cardStats.forEach((c) => {
+            if (c.overall_rating != null) ratings[c.name] = c.overall_rating
+          })
+        }
+        setOverallRatings(ratings)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
   }, [playerName, mode])
 
   const rows = useMemo(() => {
     if (!data?.cards) return []
-    const list = data.cards.map(s => ({
+    const list = data.cards.map((s) => ({
       name: s.name,
       games_played: s.games_played ?? 0,
       wins: s.wins ?? 0,
@@ -129,15 +141,19 @@ function PlayerCardStats({ playerName, mode }) {
   }, [data, sortCol, sortAsc])
 
   function handleSort(col) {
-    if (sortCol === col) setSortAsc(a => !a)
-    else { setSortCol(col); setSortAsc(false) }
+    if (sortCol === col) setSortAsc((a) => !a)
+    else {
+      setSortCol(col)
+      setSortAsc(false)
+    }
   }
 
   function Th({ col, children }) {
     const active = sortCol === col
     return (
       <th onClick={() => handleSort(col)} style={{ cursor: 'pointer', color: active ? 'var(--gold)' : undefined }}>
-        {children}{active ? (sortAsc ? ' ▲' : ' ▼') : ''}
+        {children}
+        {active ? (sortAsc ? ' ▲' : ' ▼') : ''}
       </th>
     )
   }
@@ -161,34 +177,60 @@ function PlayerCardStats({ playerName, mode }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map(row => {
+          {rows.map((row) => {
             const tier = CARD_TIER[row.name]
             const type = CARD_TYPE[row.name]
             const ratingDisplay = row.overall_rating != null ? (row.overall_rating * 100).toFixed(1) : '—'
-            const ratingColor = row.overall_rating == null ? undefined
-              : row.overall_rating >= 0.55 ? 'var(--win)'
-              : row.overall_rating <= 0.40 ? 'var(--loss)'
-              : 'var(--gold)'
+            const ratingColor =
+              row.overall_rating == null
+                ? undefined
+                : row.overall_rating >= 0.55
+                  ? 'var(--win)'
+                  : row.overall_rating <= 0.4
+                    ? 'var(--loss)'
+                    : 'var(--gold)'
             return (
-              <tr key={row.name} onClick={() => navigate(`/card/${encodeURIComponent(row.name)}`)} style={{ cursor: 'pointer' }}>
+              <tr
+                key={row.name}
+                onClick={() => navigate(`/card/${encodeURIComponent(row.name)}`)}
+                style={{ cursor: 'pointer' }}
+              >
                 <td>
                   <div className="card-name-cell">
                     <span style={{ marginRight: '.5rem' }}>
                       {tier && <span style={{ fontSize: '.7rem' }}>{TIER_ICONS[tier]}</span>}
                     </span>
                     {row.name}
-                    {type && <span style={{ marginLeft: '.4rem', fontSize: '.65rem', color: 'var(--text-muted)' }}>{TYPE_ICONS[type]}</span>}
+                    {type && (
+                      <span style={{ marginLeft: '.4rem', fontSize: '.65rem', color: 'var(--text-muted)' }}>
+                        {TYPE_ICONS[type]}
+                      </span>
+                    )}
                   </div>
                 </td>
-                <td style={{ color: ratingColor }} className={row.overall_rating == null ? 'zero' : ''}>{ratingDisplay}</td>
+                <td style={{ color: ratingColor }} className={row.overall_rating == null ? 'zero' : ''}>
+                  {ratingDisplay}
+                </td>
                 <td className={!row.games_played ? 'zero' : ''}>{row.games_played}</td>
-                <td className={!row.wins ? 'zero' : ''} style={{ color: row.wins ? 'var(--win)' : undefined }}>{row.wins}</td>
-                <td className={!row.losses ? 'zero' : ''} style={{ color: row.losses ? 'var(--loss)' : undefined }}>{row.losses}</td>
-                <td className={!row.games_played ? 'zero' : ''} style={{ color: row.games_played ? (row.win_rate >= 50 ? 'var(--win)' : 'var(--loss)') : undefined }}>
+                <td className={!row.wins ? 'zero' : ''} style={{ color: row.wins ? 'var(--win)' : undefined }}>
+                  {row.wins}
+                </td>
+                <td className={!row.losses ? 'zero' : ''} style={{ color: row.losses ? 'var(--loss)' : undefined }}>
+                  {row.losses}
+                </td>
+                <td
+                  className={!row.games_played ? 'zero' : ''}
+                  style={{ color: row.games_played ? (row.win_rate >= 50 ? 'var(--win)' : 'var(--loss)') : undefined }}
+                >
                   {row.games_played ? `${row.win_rate}%` : '—'}
                 </td>
                 <td className={!row.games_played ? 'zero' : ''}>{row.games_played ? `${row.pick_rate}%` : '—'}</td>
-                <td className={!row.player_bans ? 'zero' : ''} style={{ color: row.player_bans ? 'var(--ban)' : undefined }}>{row.player_bans}</td>
+                <td
+                  className={!row.player_bans ? 'zero' : ''}
+                  style={{ color: row.player_bans ? 'var(--ban)' : undefined }}
+                >
+                  {row.player_bans}
+                </td>
               </tr>
             )
           })}
@@ -209,8 +251,11 @@ function PlayerMatchHistory({ playerName, mode }) {
     const params = new URLSearchParams()
     if (mode !== 'All') params.set('game_mode', mode)
     fetch(`/api/match_history/${encodeURIComponent(playerName)}?${params}`)
-      .then(r => r.json())
-      .then(d => { setMatches(d); setLoading(false) })
+      .then((r) => r.json())
+      .then((d) => {
+        setMatches(d)
+        setLoading(false)
+      })
       .catch(() => setLoading(false))
   }, [playerName, mode])
 
@@ -246,13 +291,15 @@ function PlayerDetail({ playerName, mode }) {
     const params = new URLSearchParams()
     if (mode !== 'All') params.set('game_mode', mode)
     Promise.all([
-      fetch(`/api/player_stats/${encodeURIComponent(playerName)}?${params}`).then(r => r.json()),
-      fetch(`/api/elo?${params}`).then(r => r.json()),
-    ]).then(([pdata, eloData]) => {
-      setData(pdata)
-      setElo(eloData[playerName] ?? 1000)
-      setLoading(false)
-    }).catch(() => setLoading(false))
+      fetch(`/api/player_stats/${encodeURIComponent(playerName)}?${params}`).then((r) => r.json()),
+      fetch(`/api/elo?${params}`).then((r) => r.json()),
+    ])
+      .then(([pdata, eloData]) => {
+        setData(pdata)
+        setElo(eloData[playerName] ?? 1000)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
   }, [playerName, mode])
 
   if (loading) return <div className="loading">Loading player data…</div>
@@ -266,23 +313,33 @@ function PlayerDetail({ playerName, mode }) {
   return (
     <div>
       <div className="detail-header">
-        <button className="btn-back" onClick={() => navigate('/player_stats')}>← All Players</button>
+        <button className="btn-back" onClick={() => navigate('/player_stats')}>
+          ← All Players
+        </button>
       </div>
 
-      <div className="detail-name" style={{ marginBottom: '1.25rem' }}>{playerName}</div>
+      <div className="detail-name" style={{ marginBottom: '1.25rem' }}>
+        {playerName}
+      </div>
 
       {/* Stat cards */}
       <div className="stat-cards">
         <div className="stat-card">
-          <div className="value" style={{ color: 'var(--gold)' }}>{elo ?? 1000}</div>
+          <div className="value" style={{ color: 'var(--gold)' }}>
+            {elo ?? 1000}
+          </div>
           <div className="label">ELO</div>
         </div>
         <div className="stat-card">
-          <div className="value" style={{ color: 'var(--win)' }}>{wins}</div>
+          <div className="value" style={{ color: 'var(--win)' }}>
+            {wins}
+          </div>
           <div className="label">Wins</div>
         </div>
         <div className="stat-card">
-          <div className="value" style={{ color: 'var(--loss)' }}>{losses}</div>
+          <div className="value" style={{ color: 'var(--loss)' }}>
+            {losses}
+          </div>
           <div className="label">Losses</div>
         </div>
         <div className="stat-card">
@@ -330,28 +387,32 @@ function Leaderboard({ mode }) {
     const params = new URLSearchParams()
     if (mode !== 'All') params.set('game_mode', mode)
     Promise.all([
-      fetch('/api/players').then(r => r.json()),
-      fetch(`/api/player_stats?${params}`).then(r => r.json()),
-      fetch(`/api/elo?${params}`).then(r => r.json()),
-    ]).then(([names, ps, elo]) => {
-      setPlayerNames(names)
-      setPlayerStats(ps)
-      setEloData(elo)
-      setLoading(false)
-    }).catch(() => setLoading(false))
+      fetch('/api/players').then((r) => r.json()),
+      fetch(`/api/player_stats?${params}`).then((r) => r.json()),
+      fetch(`/api/elo?${params}`).then((r) => r.json()),
+    ])
+      .then(([names, ps, elo]) => {
+        setPlayerNames(names)
+        setPlayerStats(ps)
+        setEloData(elo)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
   }, [mode])
 
   if (loading) return <div className="loading">Loading leaderboard…</div>
   if (!playerStats) return <div className="empty">No data yet.</div>
 
-  const players = playerNames.map(name => {
-    const s = playerStats[name] ?? { wins: 0, losses: 0 }
-    const wins = s.wins ?? 0
-    const losses = s.losses ?? 0
-    const total = wins + losses
-    const winPct = total > 0 ? Math.round((wins / total) * 100) : 0
-    return { name, wins, losses, total, winPct, elo: eloData?.[name] ?? 1000 }
-  }).sort((a, b) => b.elo - a.elo)
+  const players = playerNames
+    .map((name) => {
+      const s = playerStats[name] ?? { wins: 0, losses: 0 }
+      const wins = s.wins ?? 0
+      const losses = s.losses ?? 0
+      const total = wins + losses
+      const winPct = total > 0 ? Math.round((wins / total) * 100) : 0
+      return { name, wins, losses, total, winPct, elo: eloData?.[name] ?? 1000 }
+    })
+    .sort((a, b) => b.elo - a.elo)
 
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -369,7 +430,11 @@ function Leaderboard({ mode }) {
         </thead>
         <tbody>
           {players.map((p, i) => (
-            <tr key={p.name} style={{ cursor: 'pointer' }} onClick={() => navigate(`/player_stats/${encodeURIComponent(p.name)}`)}>
+            <tr
+              key={p.name}
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigate(`/player_stats/${encodeURIComponent(p.name)}`)}
+            >
               <td className="rank-cell">{i + 1}</td>
               <td className="player-name-cell">{p.name}</td>
               <td className="elo-cell">{p.elo}</td>
@@ -397,8 +462,12 @@ export default function PlayerStatsPage() {
       <header>
         <span className="header-title">Player Stats</span>
         <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Home</Link>
-          <Link to="/stats" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Card Stats</Link>
+          <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>
+            Home
+          </Link>
+          <Link to="/stats" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>
+            Card Stats
+          </Link>
         </nav>
       </header>
 
@@ -407,21 +476,24 @@ export default function PlayerStatsPage() {
         <div className="mode-filter">
           <span className="mode-label">Mode</span>
           <div className="seg">
-            {MODES.map(m => (
-              <button key={m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>{m}</button>
+            {MODES.map((m) => (
+              <button key={m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>
+                {m}
+              </button>
             ))}
           </div>
         </div>
 
-        {playerName
-          ? <PlayerDetail playerName={decodeURIComponent(playerName)} mode={mode} />
-          : (
-            <>
-              <div className="section-title" style={{ marginBottom: '1rem' }}>Leaderboard</div>
-              <Leaderboard mode={mode} />
-            </>
-          )
-        }
+        {playerName ? (
+          <PlayerDetail playerName={decodeURIComponent(playerName)} mode={mode} />
+        ) : (
+          <>
+            <div className="section-title" style={{ marginBottom: '1rem' }}>
+              Leaderboard
+            </div>
+            <Leaderboard mode={mode} />
+          </>
+        )}
       </main>
     </div>
   )

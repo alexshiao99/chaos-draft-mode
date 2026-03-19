@@ -20,7 +20,7 @@ function useAPI(url) {
 
   useEffect(() => {
     fetch(url)
-      .then(r => r.json())
+      .then((r) => r.json())
       .then(setData)
       .finally(() => setLoading(false))
   }, [url])
@@ -43,7 +43,9 @@ function CardIcon({ card }) {
 function StatCard({ label, value, sub }) {
   return (
     <div className="stat-card">
-      <div className="value" style={{ color: 'var(--gold)' }}>{value}</div>
+      <div className="value" style={{ color: 'var(--gold)' }}>
+        {value}
+      </div>
       <div className="label">{label}</div>
       {sub && <div style={{ fontSize: '.7rem', color: 'var(--text-muted)', marginTop: '.2rem' }}>{sub}</div>}
     </div>
@@ -52,16 +54,18 @@ function StatCard({ label, value, sub }) {
 
 function PanelHeader({ children }) {
   return (
-    <div style={{
-      padding: '.45rem .9rem',
-      background: 'var(--surface2)',
-      borderBottom: '1px solid var(--border)',
-      fontSize: '.72rem',
-      fontWeight: 700,
-      letterSpacing: '.1em',
-      textTransform: 'uppercase',
-      color: 'var(--text-muted)',
-    }}>
+    <div
+      style={{
+        padding: '.45rem .9rem',
+        background: 'var(--surface2)',
+        borderBottom: '1px solid var(--border)',
+        fontSize: '.72rem',
+        fontWeight: 700,
+        letterSpacing: '.1em',
+        textTransform: 'uppercase',
+        color: 'var(--text-muted)',
+      }}
+    >
       {children}
     </div>
   )
@@ -69,12 +73,14 @@ function PanelHeader({ children }) {
 
 function Panel({ children }) {
   return (
-    <div style={{
-      background: 'var(--surface)',
-      border: '1px solid var(--border)',
-      borderRadius: '.75rem',
-      overflow: 'hidden',
-    }}>
+    <div
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: '.75rem',
+        overflow: 'hidden',
+      }}
+    >
       {children}
     </div>
   )
@@ -94,26 +100,34 @@ function CardImg({ card, size = 36, dimmed = false }) {
   if (card.iconUrl) {
     return (
       <img
-        src={card.iconUrl} alt={card.name} title={card.name}
+        src={card.iconUrl}
+        alt={card.name}
+        title={card.name}
         style={{
-          width: size, height: size, borderRadius: '.3rem', objectFit: 'cover', flexShrink: 0,
-          opacity: dimmed ? .55 : 1,
+          width: size,
+          height: size,
+          borderRadius: '.3rem',
+          objectFit: 'cover',
+          flexShrink: 0,
+          opacity: dimmed ? 0.55 : 1,
           filter: dimmed ? 'grayscale(.4)' : 'none',
           border: '1px solid rgba(255,255,255,.08)',
         }}
       />
     )
   }
-  return <div style={{ width: size, height: size, borderRadius: '.3rem', background: 'var(--surface2)', flexShrink: 0 }} />
+  return (
+    <div style={{ width: size, height: size, borderRadius: '.3rem', background: 'var(--surface2)', flexShrink: 0 }} />
+  )
 }
 
 function MatchCard({ match }) {
   const isWinner1st = match['1st_pick'] === match.winner
-  const winnerPicks = isWinner1st ? match.first_picks  : match.second_picks
-  const loserPicks  = isWinner1st ? match.second_picks : match.first_picks
-  const winnerBans  = isWinner1st ? match.first_bans   : match.second_bans
-  const loserBans   = isWinner1st ? match.second_bans  : match.first_bans
-  const randomBans  = match.random_bans || []
+  const winnerPicks = isWinner1st ? match.first_picks : match.second_picks
+  const loserPicks = isWinner1st ? match.second_picks : match.first_picks
+  const winnerBans = isWinner1st ? match.first_bans : match.second_bans
+  const loserBans = isWinner1st ? match.second_bans : match.first_bans
+  const randomBans = match.random_bans || []
 
   return (
     <div className="mh-game">
@@ -137,9 +151,13 @@ function MatchCard({ match }) {
       {/* Random bans */}
       {randomBans.length > 0 && (
         <div className="mh-random-bans">
-          <span className="mh-section-label" style={{ flexShrink: 0 }}>🎲 RANDOM BANS</span>
+          <span className="mh-section-label" style={{ flexShrink: 0 }}>
+            🎲 RANDOM BANS
+          </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.25rem' }}>
-            {randomBans.map(card => <CardImg key={card.name} card={card} size={32} dimmed />)}
+            {randomBans.map((card) => (
+              <CardImg key={card.name} card={card} size={32} dimmed />
+            ))}
           </div>
         </div>
       )}
@@ -148,36 +166,61 @@ function MatchCard({ match }) {
       <div className="mh-body">
         {/* Winner */}
         <div className="mh-player-col mh-won">
-          <div className="mh-player-name" style={{ color: 'var(--win)' }}>{match.winner} 🏆</div>
-          <div className="mh-section-label" style={{ marginTop: '.5rem', marginBottom: '.3rem' }}>PICKS</div>
+          <div className="mh-player-name" style={{ color: 'var(--win)' }}>
+            {match.winner} 🏆
+          </div>
+          <div className="mh-section-label" style={{ marginTop: '.5rem', marginBottom: '.3rem' }}>
+            PICKS
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.25rem' }}>
-            {(winnerPicks || []).map(card => <CardImg key={card.name} card={card} size={38} />)}
+            {(winnerPicks || []).map((card) => (
+              <CardImg key={card.name} card={card} size={38} />
+            ))}
           </div>
           {winnerBans && winnerBans.length > 0 && (
             <>
-              <div className="mh-section-label" style={{ marginTop: '.6rem', marginBottom: '.3rem' }}>BANS</div>
+              <div className="mh-section-label" style={{ marginTop: '.6rem', marginBottom: '.3rem' }}>
+                BANS
+              </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.25rem' }}>
-                {winnerBans.map(card => <CardImg key={card.name} card={card} size={30} dimmed />)}
+                {winnerBans.map((card) => (
+                  <CardImg key={card.name} card={card} size={30} dimmed />
+                ))}
               </div>
             </>
           )}
         </div>
 
         {/* Divider */}
-        <div className="mh-divider" style={{ fontSize: '1.3rem', opacity: .5 }}>⚔</div>
+        <div className="mh-divider" style={{ fontSize: '1.3rem', opacity: 0.5 }}>
+          ⚔
+        </div>
 
         {/* Loser */}
         <div className="mh-player-col mh-lost" style={{ alignItems: 'flex-end' }}>
-          <div className="mh-player-name" style={{ color: 'var(--loss)', textAlign: 'right' }}>{match.loser}</div>
-          <div className="mh-section-label" style={{ marginTop: '.5rem', marginBottom: '.3rem', textAlign: 'right' }}>PICKS</div>
+          <div className="mh-player-name" style={{ color: 'var(--loss)', textAlign: 'right' }}>
+            {match.loser}
+          </div>
+          <div className="mh-section-label" style={{ marginTop: '.5rem', marginBottom: '.3rem', textAlign: 'right' }}>
+            PICKS
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.25rem', justifyContent: 'flex-end' }}>
-            {(loserPicks || []).map(card => <CardImg key={card.name} card={card} size={38} />)}
+            {(loserPicks || []).map((card) => (
+              <CardImg key={card.name} card={card} size={38} />
+            ))}
           </div>
           {loserBans && loserBans.length > 0 && (
             <>
-              <div className="mh-section-label" style={{ marginTop: '.6rem', marginBottom: '.3rem', textAlign: 'right' }}>BANS</div>
+              <div
+                className="mh-section-label"
+                style={{ marginTop: '.6rem', marginBottom: '.3rem', textAlign: 'right' }}
+              >
+                BANS
+              </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.25rem', justifyContent: 'flex-end' }}>
-                {loserBans.map(card => <CardImg key={card.name} card={card} size={30} dimmed />)}
+                {loserBans.map((card) => (
+                  <CardImg key={card.name} card={card} size={30} dimmed />
+                ))}
               </div>
             </>
           )}
@@ -190,14 +233,20 @@ function MatchCard({ match }) {
 // ── Add Player modal ──────────────────────────────────────────────────────────
 function AddPlayerModal({ onClose, onAdded }) {
   const [name, setName] = useState('')
-  const [tag,  setTag]  = useState('')
-  const [err,  setErr]  = useState('')
+  const [tag, setTag] = useState('')
+  const [err, setErr] = useState('')
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!name.trim()) { setErr('Name is required.'); return }
-    if (!tag.trim())  { setErr('Player tag is required.'); return }
+    if (!name.trim()) {
+      setErr('Name is required.')
+      return
+    }
+    if (!tag.trim()) {
+      setErr('Player tag is required.')
+      return
+    }
     setSaving(true)
     setErr('')
     try {
@@ -207,7 +256,11 @@ function AddPlayerModal({ onClose, onAdded }) {
         body: JSON.stringify({ name: name.trim(), tag: tag.trim() }),
       })
       const data = await res.json()
-      if (!res.ok) { setErr(data.error || 'Failed to add player.'); setSaving(false); return }
+      if (!res.ok) {
+        setErr(data.error || 'Failed to add player.')
+        setSaving(false)
+        return
+      }
       onAdded(data.players)
       onClose()
     } catch {
@@ -217,31 +270,52 @@ function AddPlayerModal({ onClose, onAdded }) {
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-    }} onClick={onClose}>
-      <div style={{
-        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '1rem',
-        padding: '1.5rem', width: 'min(360px, 90vw)',
-      }} onClick={e => e.stopPropagation()}>
-        <h3 style={{ fontFamily: "'Cinzel Decorative', serif", color: 'var(--gold)', fontSize: '1rem', marginBottom: '1rem' }}>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: '1rem',
+          padding: '1.5rem',
+          width: 'min(360px, 90vw)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3
+          style={{
+            fontFamily: "'Cinzel Decorative', serif",
+            color: 'var(--gold)',
+            fontSize: '1rem',
+            marginBottom: '1rem',
+          }}
+        >
           Add New Player
         </h3>
         <form onSubmit={handleSubmit}>
           <div className="field">
             <label>Player Name</label>
             <input
-              type="text" value={name} onChange={e => setName(e.target.value)}
-              placeholder="e.g. Brooks" autoFocus
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Brooks"
+              autoFocus
             />
           </div>
           <div className="field">
             <label>Player Tag</label>
-            <input
-              type="text" value={tag} onChange={e => setTag(e.target.value)}
-              placeholder="e.g. #L990LPY2"
-            />
+            <input type="text" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. #L990LPY2" />
           </div>
           {err && <div className="error-msg">{err}</div>}
           <div style={{ display: 'flex', gap: '.5rem', marginTop: '1rem' }}>
@@ -270,27 +344,29 @@ export default function LandingPage() {
 
   // Players loaded from API
   const [players, setPlayers] = useState([])
-  const [p1, setP1]           = useState('')
-  const [p2, setP2]           = useState('')
+  const [p1, setP1] = useState('')
+  const [p2, setP2] = useState('')
 
   // Add-player modal
   const [showAddPlayer, setShowAddPlayer] = useState(false)
 
   // Draft setup state
-  const [setupErr, setSetupErr]         = useState('')
+  const [setupErr, setSetupErr] = useState('')
   const [startLoading, setStartLoading] = useState(false)
-  const [aiLoading, setAiLoading]       = useState(false)
+  const [aiLoading, setAiLoading] = useState(false)
 
   // Dashboard data
-  const { data: cardStats,    loading: cardsLoading   } = useAPI(`/api/card_stats${modeParam}`)
-  const { data: playerStats,  loading: playersLoading } = useAPI(`/api/player_stats${modeParam}`)
-  const { data: elo,          loading: eloLoading     } = useAPI(`/api/elo${modeParam}`)
-  const { data: matchHistory, loading: matchesLoading } = useAPI(`/api/match_history?limit=5${mode !== 'All' ? `&game_mode=${encodeURIComponent(mode)}` : ''}`)
+  const { data: cardStats, loading: cardsLoading } = useAPI(`/api/card_stats${modeParam}`)
+  const { data: playerStats, loading: playersLoading } = useAPI(`/api/player_stats${modeParam}`)
+  const { data: elo, loading: eloLoading } = useAPI(`/api/elo${modeParam}`)
+  const { data: matchHistory, loading: matchesLoading } = useAPI(
+    `/api/match_history?limit=5${mode !== 'All' ? `&game_mode=${encodeURIComponent(mode)}` : ''}`,
+  )
 
   useEffect(() => {
     fetch('/api/players')
-      .then(r => r.json())
-      .then(list => {
+      .then((r) => r.json())
+      .then((list) => {
         if (Array.isArray(list) && list.length > 0) {
           setPlayers(list)
           setP1(list[0])
@@ -337,14 +413,19 @@ export default function LandingPage() {
           clearInterval(id)
           navigate(`/draft/${lobbyId}`)
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }, 5000)
     return () => clearInterval(id)
   }, [lobbyId, navigate])
 
   // Draft setup actions
   async function startDraft() {
-    if (p1 === p2) { setSetupErr('❌ Player 1 and Player 2 must be different players.'); return }
+    if (p1 === p2) {
+      setSetupErr('❌ Player 1 and Player 2 must be different players.')
+      return
+    }
     setSetupErr('')
     setStartLoading(true)
     try {
@@ -360,7 +441,10 @@ export default function LandingPage() {
   }
 
   async function startAiDraft() {
-    if (p1 === p2) { setSetupErr('❌ Player 1 and Player 2 must be different players.'); return }
+    if (p1 === p2) {
+      setSetupErr('❌ Player 1 and Player 2 must be different players.')
+      return
+    }
     setSetupErr('')
     setAiLoading(true)
     try {
@@ -384,8 +468,10 @@ export default function LandingPage() {
   const [activeLobbies, setActiveLobbies] = useState([])
   const fetchLobbies = useCallback(() => {
     fetch('/api/lobbies')
-      .then(r => r.json())
-      .then(list => { if (Array.isArray(list)) setActiveLobbies(list) })
+      .then((r) => r.json())
+      .then((list) => {
+        if (Array.isArray(list)) setActiveLobbies(list)
+      })
       .catch(() => {})
   }, [])
   useEffect(() => {
@@ -398,15 +484,24 @@ export default function LandingPage() {
   const totalGames = cardStats?.[0]?.total_games ?? 0
 
   const topCards = cardStats
-    ? [...cardStats].filter(c => c.games_played >= 3).sort((a, b) => b.win_rate - a.win_rate).slice(0, 5)
+    ? [...cardStats]
+        .filter((c) => c.games_played >= 3)
+        .sort((a, b) => b.win_rate - a.win_rate)
+        .slice(0, 5)
     : []
 
   const mostBanned = cardStats
-    ? [...cardStats].filter(c => c.player_bans > 0).sort((a, b) => b.player_bans - a.player_bans).slice(0, 5)
+    ? [...cardStats]
+        .filter((c) => c.player_bans > 0)
+        .sort((a, b) => b.player_bans - a.player_bans)
+        .slice(0, 5)
     : []
 
   const highestRated = cardStats
-    ? [...cardStats].filter(c => c.overall_rating != null).sort((a, b) => b.overall_rating - a.overall_rating).slice(0, 5)
+    ? [...cardStats]
+        .filter((c) => c.overall_rating != null)
+        .sort((a, b) => b.overall_rating - a.overall_rating)
+        .slice(0, 5)
     : []
 
   const leaderboard =
@@ -427,328 +522,574 @@ export default function LandingPage() {
 
   return (
     <>
-      {showAddPlayer && (
-        <AddPlayerModal
-          onClose={() => setShowAddPlayer(false)}
-          onAdded={handlePlayerAdded}
-        />
-      )}
+      {showAddPlayer && <AddPlayerModal onClose={() => setShowAddPlayer(false)} onAdded={handlePlayerAdded} />}
       <header>
         <span className="header-title">⚔️ CHAOS Draft</span>
         <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link to="/player_stats" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Players</Link>
-          <Link to="/stats"        style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Card Stats</Link>
+          <Link to="/player_stats" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>
+            Players
+          </Link>
+          <Link to="/stats" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>
+            Card Stats
+          </Link>
         </nav>
       </header>
 
       <main>
-
         {/* ── Lobby waiting screen ── */}
         {lobbyId && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', padding: '3rem 1rem', textAlign: 'center' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1.5rem',
+              padding: '3rem 1rem',
+              textAlign: 'center',
+            }}
+          >
             <h2 style={{ fontFamily: "'Cinzel Decorative', serif", color: 'var(--gold)', fontSize: '1.3rem' }}>
               Waiting for Player 2 to join...
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '.85rem', maxWidth: '420px' }}>
               Share this link with your opponent. The draft will start automatically when they join.
             </p>
-            <div style={{
-              background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '.75rem',
-              padding: '1rem', wordBreak: 'break-all', fontSize: '.85rem', maxWidth: '500px', width: '100%',
-            }}>
+            <div
+              style={{
+                background: 'var(--surface2)',
+                border: '1px solid var(--border)',
+                borderRadius: '.75rem',
+                padding: '1rem',
+                wordBreak: 'break-all',
+                fontSize: '.85rem',
+                maxWidth: '500px',
+                width: '100%',
+              }}
+            >
               {joinUrl}
             </div>
             <div style={{ display: 'flex', gap: '.5rem' }}>
-              <button className="btn btn-gold" onClick={() => {
-                navigator.clipboard.writeText(joinUrl)
-                setLobbyCopied(true)
-                setTimeout(() => setLobbyCopied(false), 2000)
-              }}>
+              <button
+                className="btn btn-gold"
+                onClick={() => {
+                  navigator.clipboard.writeText(joinUrl)
+                  setLobbyCopied(true)
+                  setTimeout(() => setLobbyCopied(false), 2000)
+                }}
+              >
                 {lobbyCopied ? 'Copied!' : 'Copy Link'}
               </button>
-              <button className="btn btn-ghost" onClick={() => setLobbyId(null)}>Cancel</button>
+              <button className="btn btn-ghost" onClick={() => setLobbyId(null)}>
+                Cancel
+              </button>
             </div>
             <QRCodeCanvas value={joinUrl} size={200} />
-            <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>
-              Polling every 5 seconds...
-            </div>
+            <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>Polling every 5 seconds...</div>
           </div>
         )}
 
         {/* ── Mode filter ── */}
-        {!lobbyId && <>
-        <div className="mode-filter">
-          <span className="mode-label">Mode</span>
-          <div className="seg">
-            {MODES.map(m => (
-              <button key={m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>{m}</button>
-            ))}
-          </div>
-        </div>
+        {!lobbyId && (
+          <>
+            <div className="mode-filter">
+              <span className="mode-label">Mode</span>
+              <div className="seg">
+                {MODES.map((m) => (
+                  <button key={m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {/* ── Setup + summary two-column ── */}
-        <div id="setup-wrapper">
+            {/* ── Setup + summary two-column ── */}
+            <div id="setup-wrapper">
+              {/* Draft setup form */}
+              <div id="setup-screen">
+                <h2>Draft Setup</h2>
+                <div className="field">
+                  <label>Player 1 Name</label>
+                  <select value={p1} onChange={(e) => setP1(e.target.value)}>
+                    {players.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', margin: '.1rem 0' }}>
+                  <button
+                    onClick={swapPlayers}
+                    title="Swap players"
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid var(--border)',
+                      borderRadius: '999px',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      fontSize: '.85rem',
+                      padding: '.25rem .75rem',
+                      transition: 'all .15s',
+                    }}
+                  >
+                    ⇅ Swap
+                  </button>
+                </div>
+                <div className="field">
+                  <label>Player 2 Name</label>
+                  <select value={p2} onChange={(e) => setP2(e.target.value)}>
+                    {players.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {p1 === p2 && <div className="error-msg">❌ Player 1 and Player 2 must be different players.</div>}
+                {setupErr && p1 !== p2 && <div className="error-msg">{setupErr}</div>}
+                <button
+                  className="btn btn-gold"
+                  onClick={startDraft}
+                  disabled={startLoading || p1 === p2}
+                  style={{ width: '100%', marginTop: '.8rem' }}
+                >
+                  {startLoading ? 'Loading cards…' : '⚔️ Begin Draft'}
+                </button>
+                <button
+                  className="btn btn-ai"
+                  onClick={startAiDraft}
+                  disabled={aiLoading || p1 === p2}
+                  style={{ width: '100%', marginTop: '.5rem' }}
+                >
+                  {aiLoading ? 'Loading…' : '🤖 AI Draft'}
+                </button>
+                <div style={{ display: 'flex', gap: '.5rem', marginTop: '.6rem' }}>
+                  <Link
+                    to="/stats"
+                    className="btn btn-ghost"
+                    style={{
+                      flex: 1,
+                      padding: '.55rem',
+                      textAlign: 'center',
+                      textDecoration: 'none',
+                      fontSize: '.82rem',
+                    }}
+                  >
+                    📊 Card Stats
+                  </Link>
+                  <Link
+                    to="/player_stats"
+                    className="btn btn-ghost"
+                    style={{
+                      flex: 1,
+                      padding: '.55rem',
+                      textAlign: 'center',
+                      textDecoration: 'none',
+                      fontSize: '.82rem',
+                    }}
+                  >
+                    👤 Players
+                  </Link>
+                </div>
+                <button
+                  className="btn btn-ghost"
+                  style={{ width: '100%', marginTop: '.4rem', fontSize: '.82rem' }}
+                  onClick={() => setShowAddPlayer(true)}
+                >
+                  ➕ Add New Player
+                </button>
+              </div>
 
-          {/* Draft setup form */}
-          <div id="setup-screen">
-            <h2>Draft Setup</h2>
-            <div className="field">
-              <label>Player 1 Name</label>
-              <select value={p1} onChange={e => setP1(e.target.value)}>
-                {players.map(name => <option key={name} value={name}>{name}</option>)}
-              </select>
+              {/* Summary stats */}
+              <div id="match-history">
+                <div className="stat-cards">
+                  <StatCard label="Total Games" value={cardsLoading ? '—' : totalGames} />
+                  <StatCard
+                    label="Top Player"
+                    value={eloLoading || playersLoading ? '—' : topPlayer ? topPlayer.name : '—'}
+                    sub={
+                      topPlayer && !eloLoading
+                        ? `${topPlayer.elo} ELO · ${topPlayer.wins}W ${topPlayer.losses}L`
+                        : undefined
+                    }
+                  />
+                  <StatCard
+                    label="Cards in Pool"
+                    value={cardsLoading ? '—' : (cardStats?.length ?? 0)}
+                    sub="50-card CHAOS pool"
+                  />
+                </div>
+
+                {/* ── Active lobbies ── */}
+                <div style={{ marginTop: '1rem' }}>
+                  <Panel>
+                    <PanelHeader>🎮 Active Lobbies</PanelHeader>
+                    {activeLobbies.length === 0 ? (
+                      <EmptyState>No active lobbies.</EmptyState>
+                    ) : (
+                      <ul style={{ listStyle: 'none' }}>
+                        {activeLobbies.map((lobby) => {
+                          const age = lobby.age_seconds
+                          const ageStr =
+                            age < 60
+                              ? `${age}s ago`
+                              : age < 3600
+                                ? `${Math.floor(age / 60)}m ago`
+                                : `${Math.floor(age / 3600)}h ago`
+                          const phaseLabel =
+                            lobby.phase === 'ban'
+                              ? 'Banning'
+                              : lobby.phase === 'pick'
+                                ? 'Picking'
+                                : lobby.phase === 'done'
+                                  ? 'Complete'
+                                  : lobby.phase
+                          const statusLabel =
+                            lobby.status === 'waiting_for_p2'
+                              ? 'Waiting for P2'
+                              : lobby.status === 'active'
+                                ? phaseLabel
+                                : lobby.status === 'complete'
+                                  ? 'Complete'
+                                  : lobby.status
+
+                          const statusColor =
+                            lobby.status === 'waiting_for_p2'
+                              ? 'var(--gold)'
+                              : lobby.status === 'complete'
+                                ? 'var(--text-muted)'
+                                : 'var(--win)'
+
+                          return (
+                            <li
+                              key={lobby.lobby_id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '.75rem',
+                                padding: '.6rem .9rem',
+                                borderBottom: '1px solid rgba(42,48,80,.5)',
+                                cursor: 'pointer',
+                              }}
+                              onClick={() => {
+                                if (lobby.status === 'waiting_for_p2') {
+                                  navigate(`/draft/${lobby.lobby_id}/join`)
+                                } else {
+                                  navigate(`/draft/${lobby.lobby_id}`)
+                                }
+                              }}
+                            >
+                              {/* Players */}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: '.85rem', fontWeight: 600 }}>
+                                  {lobby.p1_name}
+                                  <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> vs </span>
+                                  {lobby.p2_name}
+                                  {lobby.ai_mode && (
+                                    <span
+                                      style={{ marginLeft: '.4rem', fontSize: '.7rem', color: 'var(--text-muted)' }}
+                                    >
+                                      🤖
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: '.72rem', color: 'var(--text-muted)' }}>
+                                  {lobby.picks > 0 ? `${lobby.picks} picks` : ''}
+                                  {lobby.picks > 0 && lobby.bans > 0 ? ' · ' : ''}
+                                  {lobby.bans > 0 ? `${lobby.bans} bans` : ''}
+                                  {lobby.picks === 0 && lobby.bans === 0 ? 'Just started' : ''}
+                                  {' · '}
+                                  {ageStr}
+                                </div>
+                              </div>
+
+                              {/* Status badge */}
+                              <span
+                                style={{
+                                  fontSize: '.72rem',
+                                  fontWeight: 700,
+                                  padding: '.2rem .6rem',
+                                  borderRadius: '999px',
+                                  border: `1px solid ${statusColor}`,
+                                  color: statusColor,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {statusLabel}
+                              </span>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </Panel>
+                </div>
+              </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '.1rem 0' }}>
-              <button
-                onClick={swapPlayers}
-                title="Swap players"
-                style={{
-                  background: 'transparent', border: '1px solid var(--border)', borderRadius: '999px',
-                  color: 'var(--text-muted)', cursor: 'pointer', fontSize: '.85rem',
-                  padding: '.25rem .75rem', transition: 'all .15s',
-                }}
-              >
-                ⇅ Swap
-              </button>
-            </div>
-            <div className="field">
-              <label>Player 2 Name</label>
-              <select value={p2} onChange={e => setP2(e.target.value)}>
-                {players.map(name => <option key={name} value={name}>{name}</option>)}
-              </select>
-            </div>
-            {p1 === p2 && (
-              <div className="error-msg">❌ Player 1 and Player 2 must be different players.</div>
-            )}
-            {setupErr && p1 !== p2 && (
-              <div className="error-msg">{setupErr}</div>
-            )}
-            <button
-              className="btn btn-gold"
-              onClick={startDraft}
-              disabled={startLoading || p1 === p2}
-              style={{ width: '100%', marginTop: '.8rem' }}
+
+            {/* ── Top cards + most banned ── */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+                gap: '1rem',
+                margin: '2rem 0',
+              }}
             >
-              {startLoading ? 'Loading cards…' : '⚔️ Begin Draft'}
-            </button>
-            <button
-              className="btn btn-ai"
-              onClick={startAiDraft}
-              disabled={aiLoading || p1 === p2}
-              style={{ width: '100%', marginTop: '.5rem' }}
-            >
-              {aiLoading ? 'Loading…' : '🤖 AI Draft'}
-            </button>
-            <div style={{ display: 'flex', gap: '.5rem', marginTop: '.6rem' }}>
-              <Link to="/stats"        className="btn btn-ghost" style={{ flex: 1, padding: '.55rem', textAlign: 'center', textDecoration: 'none', fontSize: '.82rem' }}>
-                📊 Card Stats
-              </Link>
-              <Link to="/player_stats" className="btn btn-ghost" style={{ flex: 1, padding: '.55rem', textAlign: 'center', textDecoration: 'none', fontSize: '.82rem' }}>
-                👤 Players
-              </Link>
-            </div>
-            <button
-              className="btn btn-ghost"
-              style={{ width: '100%', marginTop: '.4rem', fontSize: '.82rem' }}
-              onClick={() => setShowAddPlayer(true)}
-            >
-              ➕ Add New Player
-            </button>
-          </div>
-
-          {/* Summary stats */}
-          <div id="match-history">
-            <div className="stat-cards">
-              <StatCard label="Total Games" value={cardsLoading ? '—' : totalGames} />
-              <StatCard
-                label="Top Player"
-                value={eloLoading || playersLoading ? '—' : topPlayer ? topPlayer.name : '—'}
-                sub={topPlayer && !eloLoading ? `${topPlayer.elo} ELO · ${topPlayer.wins}W ${topPlayer.losses}L` : undefined}
-              />
-              <StatCard label="Cards in Pool" value={cardsLoading ? '—' : (cardStats?.length ?? 0)} sub="50-card CHAOS pool" />
-            </div>
-
-            {/* ── Active lobbies ── */}
-            <div style={{ marginTop: '1rem' }}>
               <Panel>
-                <PanelHeader>🎮 Active Lobbies</PanelHeader>
-                {activeLobbies.length === 0 ? <EmptyState>No active lobbies.</EmptyState> : (
+                <PanelHeader>
+                  🏆 Top Cards by Win Rate <span style={{ fontWeight: 400, opacity: 0.7 }}>(min 3 games)</span>
+                </PanelHeader>
+                {cardsLoading ? (
+                  <EmptyState>Loading…</EmptyState>
+                ) : topCards.length === 0 ? (
+                  <EmptyState>No data yet — play some games!</EmptyState>
+                ) : (
                   <ul style={{ listStyle: 'none' }}>
-                    {activeLobbies.map(lobby => {
-                      const age = lobby.age_seconds
-                      const ageStr = age < 60 ? `${age}s ago` : age < 3600 ? `${Math.floor(age / 60)}m ago` : `${Math.floor(age / 3600)}h ago`
-                      const phaseLabel = lobby.phase === 'ban' ? 'Banning' : lobby.phase === 'pick' ? 'Picking' : lobby.phase === 'done' ? 'Complete' : lobby.phase
-                      const statusLabel = lobby.status === 'waiting_for_p2' ? 'Waiting for P2' : lobby.status === 'active' ? phaseLabel : lobby.status === 'complete' ? 'Complete' : lobby.status
-
-                      const statusColor = lobby.status === 'waiting_for_p2' ? 'var(--gold)'
-                        : lobby.status === 'complete' ? 'var(--text-muted)'
-                        : 'var(--win)'
-
-                      return (
-                        <li
-                          key={lobby.lobby_id}
+                    {topCards.map((card, i) => (
+                      <li
+                        key={card.name}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '.75rem',
+                          padding: '.45rem .9rem',
+                          borderBottom: '1px solid rgba(42,48,80,.5)',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => navigate(`/card/${encodeURIComponent(card.name)}`)}
+                      >
+                        <span style={{ color: 'var(--text-muted)', fontSize: '.75rem', width: 16, flexShrink: 0 }}>
+                          {i + 1}
+                        </span>
+                        <CardIcon card={card} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: '.85rem',
+                              fontWeight: 600,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {card.name}
+                          </div>
+                          <div style={{ fontSize: '.72rem', color: 'var(--text-muted)' }}>
+                            {card.games_played}g · {card.ban_rate}% ban rate
+                          </div>
+                        </div>
+                        <ElixirPip cost={card.elixir} />
+                        <span
                           style={{
-                            display: 'flex', alignItems: 'center', gap: '.75rem',
-                            padding: '.6rem .9rem', borderBottom: '1px solid rgba(42,48,80,.5)',
-                            cursor: 'pointer',
-                          }}
-                          onClick={() => {
-                            if (lobby.status === 'waiting_for_p2') {
-                              navigate(`/draft/${lobby.lobby_id}/join`)
-                            } else {
-                              navigate(`/draft/${lobby.lobby_id}`)
-                            }
+                            color: 'var(--win)',
+                            fontWeight: 700,
+                            fontSize: '.85rem',
+                            fontFamily: "'Rajdhani', sans-serif",
+                            minWidth: 40,
+                            textAlign: 'right',
                           }}
                         >
-                          {/* Players */}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '.85rem', fontWeight: 600 }}>
-                              {lobby.p1_name}
-                              <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> vs </span>
-                              {lobby.p2_name}
-                              {lobby.ai_mode && <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: 'var(--text-muted)' }}>🤖</span>}
-                            </div>
-                            <div style={{ fontSize: '.72rem', color: 'var(--text-muted)' }}>
-                              {lobby.picks > 0 ? `${lobby.picks} picks` : ''}{lobby.picks > 0 && lobby.bans > 0 ? ' · ' : ''}{lobby.bans > 0 ? `${lobby.bans} bans` : ''}{lobby.picks === 0 && lobby.bans === 0 ? 'Just started' : ''}
-                              {' · '}{ageStr}
-                            </div>
-                          </div>
+                          {card.win_rate}%
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Panel>
 
-                          {/* Status badge */}
-                          <span style={{
-                            fontSize: '.72rem', fontWeight: 700, padding: '.2rem .6rem',
-                            borderRadius: '999px', border: `1px solid ${statusColor}`,
-                            color: statusColor, whiteSpace: 'nowrap',
-                          }}>
-                            {statusLabel}
-                          </span>
-                        </li>
-                      )
-                    })}
+              <Panel>
+                <PanelHeader>🚫 Most Banned Cards</PanelHeader>
+                {cardsLoading ? (
+                  <EmptyState>Loading…</EmptyState>
+                ) : mostBanned.length === 0 ? (
+                  <EmptyState>No bans recorded yet.</EmptyState>
+                ) : (
+                  <ul style={{ listStyle: 'none' }}>
+                    {mostBanned.map((card, i) => (
+                      <li
+                        key={card.name}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '.75rem',
+                          padding: '.45rem .9rem',
+                          borderBottom: '1px solid rgba(42,48,80,.5)',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => navigate(`/card/${encodeURIComponent(card.name)}`)}
+                      >
+                        <span style={{ color: 'var(--text-muted)', fontSize: '.75rem', width: 16, flexShrink: 0 }}>
+                          {i + 1}
+                        </span>
+                        <CardIcon card={card} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: '.85rem',
+                              fontWeight: 600,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {card.name}
+                          </div>
+                          <div style={{ fontSize: '.72rem', color: 'var(--text-muted)' }}>
+                            {card.ban_rate}% ban rate
+                          </div>
+                        </div>
+                        <ElixirPip cost={card.elixir} />
+                        <span
+                          style={{
+                            color: 'var(--ban)',
+                            fontWeight: 700,
+                            fontSize: '.85rem',
+                            fontFamily: "'Rajdhani', sans-serif",
+                            minWidth: 40,
+                            textAlign: 'right',
+                          }}
+                        >
+                          {card.player_bans}×
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Panel>
+
+              <Panel>
+                <PanelHeader>⭐ Highest Rated Cards</PanelHeader>
+                {cardsLoading ? (
+                  <EmptyState>Loading…</EmptyState>
+                ) : highestRated.length === 0 ? (
+                  <EmptyState>No rating data yet.</EmptyState>
+                ) : (
+                  <ul style={{ listStyle: 'none' }}>
+                    {highestRated.map((card, i) => (
+                      <li
+                        key={card.name}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '.75rem',
+                          padding: '.45rem .9rem',
+                          borderBottom: '1px solid rgba(42,48,80,.5)',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => navigate(`/card/${encodeURIComponent(card.name)}`)}
+                      >
+                        <span style={{ color: 'var(--text-muted)', fontSize: '.75rem', width: 16, flexShrink: 0 }}>
+                          {i + 1}
+                        </span>
+                        <CardIcon card={card} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: '.85rem',
+                              fontWeight: 600,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {card.name}
+                          </div>
+                          <div style={{ fontSize: '.72rem', color: 'var(--text-muted)' }}>
+                            {card.games_played}g · {card.win_rate}% win rate
+                          </div>
+                        </div>
+                        <ElixirPip cost={card.elixir} />
+                        <span
+                          style={{
+                            color: 'var(--gold)',
+                            fontWeight: 700,
+                            fontSize: '.85rem',
+                            fontFamily: "'Rajdhani', sans-serif",
+                            minWidth: 40,
+                            textAlign: 'right',
+                          }}
+                        >
+                          {(card.overall_rating * 100).toFixed(1)}
+                        </span>
+                      </li>
+                    ))}
                   </ul>
                 )}
               </Panel>
             </div>
-          </div>
-        </div>
 
-        {/* ── Top cards + most banned ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1rem', margin: '2rem 0' }}>
-          <Panel>
-            <PanelHeader>🏆 Top Cards by Win Rate <span style={{ fontWeight: 400, opacity: .7 }}>(min 3 games)</span></PanelHeader>
-            {cardsLoading ? <EmptyState>Loading…</EmptyState> : topCards.length === 0 ? <EmptyState>No data yet — play some games!</EmptyState> : (
-              <ul style={{ listStyle: 'none' }}>
-                {topCards.map((card, i) => (
-                  <li key={card.name} style={{ display: 'flex', alignItems: 'center', gap: '.75rem', padding: '.45rem .9rem', borderBottom: '1px solid rgba(42,48,80,.5)', cursor: 'pointer' }} onClick={() => navigate(`/card/${encodeURIComponent(card.name)}`)}>
+            {/* ── Player leaderboard ── */}
+            <Panel>
+              <PanelHeader>📊 Player Leaderboard</PanelHeader>
+              {playersLoading || eloLoading ? (
+                <EmptyState>Loading…</EmptyState>
+              ) : leaderboard.length === 0 ? (
+                <EmptyState>No player data yet.</EmptyState>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="leaderboard-table">
+                    <thead>
+                      <tr>
+                        <th className="rank-cell">#</th>
+                        <th>Player</th>
+                        <th style={{ textAlign: 'right' }}>ELO</th>
+                        <th style={{ textAlign: 'right' }}>W</th>
+                        <th style={{ textAlign: 'right' }}>L</th>
+                        <th style={{ textAlign: 'right' }}>Win%</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaderboard.map((p, i) => (
+                        <tr
+                          key={p.name}
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => navigate(`/player_stats/${encodeURIComponent(p.name)}`)}
+                        >
+                          <td className="rank-cell">{i + 1}</td>
+                          <td className="player-name-cell">{p.name}</td>
+                          <td className="elo-cell" style={{ textAlign: 'right' }}>
+                            {p.elo}
+                          </td>
+                          <td className="win-cell" style={{ textAlign: 'right' }}>
+                            {p.wins}
+                          </td>
+                          <td className="loss-cell" style={{ textAlign: 'right' }}>
+                            {p.losses}
+                          </td>
+                          <td
+                            style={{
+                              textAlign: 'right',
+                              color:
+                                p.total === 0 ? 'var(--text-muted)' : p.winPct >= 50 ? 'var(--win)' : 'var(--loss)',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {p.total > 0 ? `${p.winPct}%` : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Panel>
 
-                    <span style={{ color: 'var(--text-muted)', fontSize: '.75rem', width: 16, flexShrink: 0 }}>{i + 1}</span>
-                    <CardIcon card={card} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '.85rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.name}</div>
-                      <div style={{ fontSize: '.72rem', color: 'var(--text-muted)' }}>{card.games_played}g · {card.ban_rate}% ban rate</div>
-                    </div>
-                    <ElixirPip cost={card.elixir} />
-                    <span style={{ color: 'var(--win)', fontWeight: 700, fontSize: '.85rem', fontFamily: "'Rajdhani', sans-serif", minWidth: 40, textAlign: 'right' }}>
-                      {card.win_rate}%
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-
-          <Panel>
-            <PanelHeader>🚫 Most Banned Cards</PanelHeader>
-            {cardsLoading ? <EmptyState>Loading…</EmptyState> : mostBanned.length === 0 ? <EmptyState>No bans recorded yet.</EmptyState> : (
-              <ul style={{ listStyle: 'none' }}>
-                {mostBanned.map((card, i) => (
-                  <li key={card.name} style={{ display: 'flex', alignItems: 'center', gap: '.75rem', padding: '.45rem .9rem', borderBottom: '1px solid rgba(42,48,80,.5)', cursor: 'pointer' }} onClick={() => navigate(`/card/${encodeURIComponent(card.name)}`)}>
-
-                    <span style={{ color: 'var(--text-muted)', fontSize: '.75rem', width: 16, flexShrink: 0 }}>{i + 1}</span>
-                    <CardIcon card={card} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '.85rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.name}</div>
-                      <div style={{ fontSize: '.72rem', color: 'var(--text-muted)' }}>{card.ban_rate}% ban rate</div>
-                    </div>
-                    <ElixirPip cost={card.elixir} />
-                    <span style={{ color: 'var(--ban)', fontWeight: 700, fontSize: '.85rem', fontFamily: "'Rajdhani', sans-serif", minWidth: 40, textAlign: 'right' }}>
-                      {card.player_bans}×
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-
-          <Panel>
-            <PanelHeader>⭐ Highest Rated Cards</PanelHeader>
-            {cardsLoading ? <EmptyState>Loading…</EmptyState> : highestRated.length === 0 ? <EmptyState>No rating data yet.</EmptyState> : (
-              <ul style={{ listStyle: 'none' }}>
-                {highestRated.map((card, i) => (
-                  <li key={card.name} style={{ display: 'flex', alignItems: 'center', gap: '.75rem', padding: '.45rem .9rem', borderBottom: '1px solid rgba(42,48,80,.5)', cursor: 'pointer' }} onClick={() => navigate(`/card/${encodeURIComponent(card.name)}`)}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '.75rem', width: 16, flexShrink: 0 }}>{i + 1}</span>
-                    <CardIcon card={card} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '.85rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.name}</div>
-                      <div style={{ fontSize: '.72rem', color: 'var(--text-muted)' }}>{card.games_played}g · {card.win_rate}% win rate</div>
-                    </div>
-                    <ElixirPip cost={card.elixir} />
-                    <span style={{ color: 'var(--gold)', fontWeight: 700, fontSize: '.85rem', fontFamily: "'Rajdhani', sans-serif", minWidth: 40, textAlign: 'right' }}>
-                      {(card.overall_rating * 100).toFixed(1)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-        </div>
-
-        {/* ── Player leaderboard ── */}
-        <Panel>
-          <PanelHeader>📊 Player Leaderboard</PanelHeader>
-          {playersLoading || eloLoading ? <EmptyState>Loading…</EmptyState> : leaderboard.length === 0 ? <EmptyState>No player data yet.</EmptyState> : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="leaderboard-table">
-                <thead>
-                  <tr>
-                    <th className="rank-cell">#</th>
-                    <th>Player</th>
-                    <th style={{ textAlign: 'right' }}>ELO</th>
-                    <th style={{ textAlign: 'right' }}>W</th>
-                    <th style={{ textAlign: 'right' }}>L</th>
-                    <th style={{ textAlign: 'right' }}>Win%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboard.map((p, i) => (
-                    <tr key={p.name} style={{ cursor: 'pointer' }} onClick={() => navigate(`/player_stats/${encodeURIComponent(p.name)}`)}>
-                      <td className="rank-cell">{i + 1}</td>
-                      <td className="player-name-cell">{p.name}</td>
-                      <td className="elo-cell" style={{ textAlign: 'right' }}>{p.elo}</td>
-                      <td className="win-cell"  style={{ textAlign: 'right' }}>{p.wins}</td>
-                      <td className="loss-cell" style={{ textAlign: 'right' }}>{p.losses}</td>
-                      <td style={{ textAlign: 'right', color: p.total === 0 ? 'var(--text-muted)' : p.winPct >= 50 ? 'var(--win)' : 'var(--loss)', fontWeight: 700 }}>
-                        {p.total > 0 ? `${p.winPct}%` : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* ── Recent match history ── */}
+            <div style={{ marginTop: '1rem' }}>
+              <Panel>
+                <PanelHeader>🕘 Recent Matches</PanelHeader>
+                {matchesLoading ? (
+                  <EmptyState>Loading…</EmptyState>
+                ) : !matchHistory || matchHistory.length === 0 ? (
+                  <EmptyState>No matches recorded yet.</EmptyState>
+                ) : (
+                  matchHistory.map((match, i) => <MatchCard key={i} match={match} />)
+                )}
+              </Panel>
             </div>
-          )}
-        </Panel>
-
-        {/* ── Recent match history ── */}
-        <div style={{ marginTop: '1rem' }}>
-          <Panel>
-            <PanelHeader>🕘 Recent Matches</PanelHeader>
-            {matchesLoading ? <EmptyState>Loading…</EmptyState> : !matchHistory || matchHistory.length === 0 ? <EmptyState>No matches recorded yet.</EmptyState> : (
-              matchHistory.map((match, i) => <MatchCard key={i} match={match} />)
-            )}
-          </Panel>
-        </div>
-
-        </>}
+          </>
+        )}
       </main>
     </>
   )
