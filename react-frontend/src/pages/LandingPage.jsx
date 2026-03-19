@@ -380,6 +380,20 @@ export default function LandingPage() {
     setP2(p1)
   }
 
+  // Active lobbies
+  const [activeLobbies, setActiveLobbies] = useState([])
+  const fetchLobbies = useCallback(() => {
+    fetch('/api/lobbies')
+      .then(r => r.json())
+      .then(list => { if (Array.isArray(list)) setActiveLobbies(list) })
+      .catch(() => {})
+  }, [])
+  useEffect(() => {
+    fetchLobbies()
+    const id = setInterval(fetchLobbies, 5000)
+    return () => clearInterval(id)
+  }, [fetchLobbies])
+
   // Derived dashboard data
   const totalGames = cardStats?.[0]?.total_games ?? 0
 
@@ -552,6 +566,68 @@ export default function LandingPage() {
                 sub={topPlayer && !eloLoading ? `${topPlayer.elo} ELO · ${topPlayer.wins}W ${topPlayer.losses}L` : undefined}
               />
               <StatCard label="Cards in Pool" value={cardsLoading ? '—' : (cardStats?.length ?? 0)} sub="50-card CHAOS pool" />
+            </div>
+
+            {/* ── Active lobbies ── */}
+            <div style={{ marginTop: '1rem' }}>
+              <Panel>
+                <PanelHeader>🎮 Active Lobbies</PanelHeader>
+                {activeLobbies.length === 0 ? <EmptyState>No active lobbies.</EmptyState> : (
+                  <ul style={{ listStyle: 'none' }}>
+                    {activeLobbies.map(lobby => {
+                      const age = lobby.age_seconds
+                      const ageStr = age < 60 ? `${age}s ago` : age < 3600 ? `${Math.floor(age / 60)}m ago` : `${Math.floor(age / 3600)}h ago`
+                      const phaseLabel = lobby.phase === 'ban' ? 'Banning' : lobby.phase === 'pick' ? 'Picking' : lobby.phase === 'done' ? 'Complete' : lobby.phase
+                      const statusLabel = lobby.status === 'waiting_for_p2' ? 'Waiting for P2' : lobby.status === 'active' ? phaseLabel : lobby.status === 'complete' ? 'Complete' : lobby.status
+
+                      const statusColor = lobby.status === 'waiting_for_p2' ? 'var(--gold)'
+                        : lobby.status === 'complete' ? 'var(--text-muted)'
+                        : 'var(--win)'
+
+                      return (
+                        <li
+                          key={lobby.lobby_id}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '.75rem',
+                            padding: '.6rem .9rem', borderBottom: '1px solid rgba(42,48,80,.5)',
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => {
+                            if (lobby.status === 'waiting_for_p2') {
+                              navigate(`/draft/${lobby.lobby_id}/join`)
+                            } else {
+                              navigate(`/draft/${lobby.lobby_id}`)
+                            }
+                          }}
+                        >
+                          {/* Players */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '.85rem', fontWeight: 600 }}>
+                              {lobby.p1_name}
+                              <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> vs </span>
+                              {lobby.p2_name}
+                              {lobby.ai_mode && <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: 'var(--text-muted)' }}>🤖</span>}
+                            </div>
+                            <div style={{ fontSize: '.72rem', color: 'var(--text-muted)' }}>
+                              {lobby.picks > 0 ? `${lobby.picks} picks` : ''}{lobby.picks > 0 && lobby.bans > 0 ? ' · ' : ''}{lobby.bans > 0 ? `${lobby.bans} bans` : ''}{lobby.picks === 0 && lobby.bans === 0 ? 'Just started' : ''}
+                              {' · '}{ageStr}
+                            </div>
+                          </div>
+
+                          {/* Status badge */}
+                          <span style={{
+                            fontSize: '.72rem', fontWeight: 700, padding: '.2rem .6rem',
+                            borderRadius: '999px', border: `1px solid ${statusColor}`,
+                            color: statusColor, whiteSpace: 'nowrap',
+                          }}>
+                            {statusLabel}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </Panel>
             </div>
           </div>
         </div>
