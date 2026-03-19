@@ -28,7 +28,7 @@ Deployment target: React frontend on AWS Amplify, Flask backend on EC2.
 
 **Not WebSockets or SSE** — both add complexity (eventlet/gevent, sticky sessions) that is not worth it for a turn-based draft with 10–30s average think times. The existing `GET /api/{lobby_id}/state` endpoint already handles this. Zero new dependencies.
 
-**Polling rate:** 5s when `status === "waiting_for_p2"`, 1.5s when `status === "active"`.
+**Polling rate:** 0.2s when `status === "waiting_for_p2"`, 0.2s when `status === "active"`.
 
 ---
 

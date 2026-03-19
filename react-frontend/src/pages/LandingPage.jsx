@@ -376,7 +376,8 @@ export default function LandingPage() {
       if (s.error) throw new Error(s.error)
       localStorage.setItem(tokenKey(s.lobby_id), s.p1_token)
       localStorage.setItem(roleKey(s.lobby_id), '1')
-      window.open(`/draft/${s.lobby_id}`, '_blank')
+      // AI lobbies are immediately active — navigate directly, no P2 wait needed
+      setLobbyId(s.lobby_id)
     } catch (e) {
       setSetupErr(`❌ ${e.message}`)
     }
