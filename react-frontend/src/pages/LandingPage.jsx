@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { PLAYERS } from '../data/players'
 import { getApiUrl } from '../config'
 import { QRCodeCanvas } from 'qrcode.react'
 import { apiFetch, tokenKey, roleKey } from '../api'
