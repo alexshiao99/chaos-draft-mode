@@ -603,7 +603,6 @@ function TurnBar({
   );
 }
 
-<<<<<<< HEAD
 function DeckPanel({ playerName, picks, link, playerNum, oppName, oppPicks, showQr, onCopyLink, singlePanel, gameEndedBtn }) {
   const color = playerNum === 1 ? 'var(--p1)' : 'var(--p2)'
   const smFb  = cardFallback(30)
@@ -654,40 +653,10 @@ function DeckPanel({ playerName, picks, link, playerNum, oppName, oppPicks, show
             {oppPicks.map((c, i) => (
               <img key={i} src={c.iconUrl} alt={c.name} title={c.name} onError={e => { e.target.src = smFb }} />
             ))}
-=======
-function DeckPanel({
-  playerName,
-  picks,
-  link,
-  playerNum,
-  onWin,
-  wonAlready,
-  onCopyLink,
-}) {
-  const color = playerNum === 1 ? "var(--p1)" : "var(--p2)";
-  return (
-    <div className="deck-box">
-      <div className="deck-player-name" style={{ color }}>
-        {playerName}
-      </div>
-
-      <div className="done-grid">
-        {picks.map((c, i) => (
-          <div className="done-card" key={i}>
-            <img
-              src={c.iconUrl}
-              alt={c.name}
-              onError={(e) => {
-                e.target.style.display = "none";
-              }}
-            />
-            <div className="cn">{c.name}</div>
->>>>>>> main
           </div>
         </div>
       )}
 
-<<<<<<< HEAD
       {singlePanel ? (
         /* 2-column layout: left = name+cards+avg, right = QR+link+buttons */
         <div className="deck-box-body split">
@@ -714,62 +683,13 @@ function DeckPanel({
           {avgBlock}
         </div>
       )}
-=======
-      <a className="deck-link-url" href={link} target="_blank" rel="noreferrer">
-        {link}
-      </a>
-
-      <div className="btn-row" style={{ marginTop: ".75rem" }}>
-        <button className="btn btn-copy-green" onClick={onCopyLink}>
-          📋 COPY DECK LINK
-        </button>
-        <a
-          className="btn btn-open-cr"
-          href={link}
-          target="_blank"
-          rel="noreferrer"
-        >
-          📲 OPEN IN CR
-        </a>
-      </div>
-
-      <div className="qr-section">
-        <div className="qr-label">📱 SCAN TO IMPORT DECK</div>
-        <QRCodeCanvas value={link || "https://example.com"} size={180} />
-      </div>
-
-      <div className="avg-elixir-row">
-        Avg elixir:{" "}
-        <span style={{ color: "var(--gold)", fontWeight: 700 }}>
-          {avgElixir(picks)}
-        </span>
-      </div>
-
-      <button className="btn-winner-full" onClick={onWin} disabled={wonAlready}>
-        🏆 {playerName.toUpperCase()} WINS!
-      </button>
->>>>>>> main
     </div>
   );
 }
 
-<<<<<<< HEAD
 function DoneScreen({ draft, localRole, winnerInfo, fetchError, retryCountdown, onGameEnded, isFetchingResult, onReset, onCopyLink, aiLogOpen, setAiLogOpen }) {
   const p1Link = draft.p1_deck_link || '#'
   const p2Link = draft.p2_deck_link || '#'
-=======
-function DoneScreen({
-  draft,
-  winnerInfo,
-  onDeclareWinner,
-  onReset,
-  onCopyLink,
-  aiLogOpen,
-  setAiLogOpen,
-}) {
-  const p1Link = draft.p1_deck_link || "#";
-  const p2Link = draft.p2_deck_link || "#";
->>>>>>> main
 
   // Derive my deck vs opponent based on role
   const myNum   = localRole || 1
@@ -794,29 +714,10 @@ function DoneScreen({
   )
 
   return (
-<<<<<<< HEAD
     <div id="done-screen" style={{ display: 'block' }}>
       <div className="done-heading">
         <h2>🏆 Draft Complete!</h2>
         <p>Copy a deck link and open it on your phone — it imports straight into Clash Royale.</p>
-=======
-    <div id="done-screen" style={{ display: "block" }}>
-      <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-        <h2
-          style={{
-            fontFamily: "'Cinzel Decorative', serif",
-            color: "var(--gold)",
-            fontSize: "1.4rem",
-            marginBottom: ".4rem",
-          }}
-        >
-          🏆 Draft Complete!
-        </h2>
-        <p style={{ color: "var(--text-muted)" }}>
-          Copy a deck link and open it on your phone — it imports straight into
-          Clash Royale.
-        </p>
->>>>>>> main
       </div>
 
       {fetchError && (
@@ -957,7 +858,6 @@ export default function DraftPage() {
   const { lobbyId } = useParams();
   const { player: loggedInPlayer, logout } = useAuth();
 
-<<<<<<< HEAD
   const [draft, setDraft]               = useState(null)
   const [rarityFilter, setRarityFilter] = useState('All')
   const [sortMode, setSortMode]         = useState('type')
@@ -974,20 +874,6 @@ export default function DraftPage() {
   const [aiLogOpen, setAiLogOpen]       = useState(false)
   const [copyMsg, setCopyMsg]           = useState({})  // { 1: bool, 2: bool }
   const [lobbyCopied, setLobbyCopied]   = useState(false)
-=======
-  const [draft, setDraft] = useState(null);
-  const [rarityFilter, setRarityFilter] = useState("All");
-  const [sortMode, setSortMode] = useState("type");
-  const [elixirAsc, setElixirAsc] = useState(true);
-  const [search, setSearch] = useState("");
-  const [timerSecs, setTimerSecs] = useState(30);
-  const [timerPaused, setTimerPaused] = useState(false);
-  const [winnerInfo, setWinnerInfo] = useState(null);
-  const [aiThinking, setAiThinking] = useState(false);
-  const [aiLogOpen, setAiLogOpen] = useState(false);
-  const [copyMsg, setCopyMsg] = useState({}); // { 1: bool, 2: bool }
-  const [lobbyCopied, setLobbyCopied] = useState(false);
->>>>>>> main
 
   // Role detection from localStorage
   const localRole =
@@ -1172,17 +1058,11 @@ export default function DraftPage() {
 
   // ── AI auto-trigger ─────────────────────────────────────────────────────────
   useEffect(() => {
-<<<<<<< HEAD
     if (!draft) return
     if (!draft.ai_mode) return
     if (draft.phase !== 'ban' && draft.phase !== 'pick') return
     // Only P1 fires AI actions; P2 (and spectators) just watch via polling
     if (localRole !== null && localRole !== 1) return
-=======
-    if (!draft) return;
-    if (!draft.ai_mode) return;
-    if (draft.phase !== "ban" && draft.phase !== "pick") return;
->>>>>>> main
 
     setAiThinking(true);
     const t = setTimeout(async () => {
@@ -1241,7 +1121,6 @@ export default function DraftPage() {
     navigate("/");
   }
 
-<<<<<<< HEAD
   function _startRetryCountdown() {
     clearInterval(retryIntervalRef.current)
     setRetryCountdown(60)
@@ -1276,22 +1155,6 @@ export default function DraftPage() {
       setFetchError('Failed to fetch match result: ' + e.message)
     } finally {
       setIsFetchingResult(false)
-=======
-  async function declareWinner(player) {
-    try {
-      const res = await draftFetch(lobbyId, "/record_winner", {
-        method: "POST",
-        body: JSON.stringify({ winner: player }),
-      });
-      const data = await res.json();
-      if (data.error) {
-        alert("Error saving result: " + data.error);
-        return;
-      }
-      setWinnerInfo({ winner: data.winner, loser: data.loser });
-    } catch (e) {
-      alert("Failed to save result: " + e.message);
->>>>>>> main
     }
   }
 
