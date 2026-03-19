@@ -179,11 +179,24 @@ def join_lobby(lobby_id):
         return jsonify({"error": "lobby_not_found"}), 404
 
     with lobby["_lock"]:
-        if lobby["status"] != "waiting_for_p2":
+        if lobby.get("ai_mode"):
+            if lobby["status"] == "waiting_for_p2":
+                lobby["p2_token"] = "AI"
+                lobby["status"] = "active"
+                lobby["turn_started_at"] = time.time()
+            return jsonify({
+                "p2_token": lobby["p2_token"],
+                "lobby_id": lobby_id,
+                **get_state_view(lobby),
+            })
+        if lobby["status"] == "waiting_for_p2":
+            lobby["p2_token"] = secrets.token_hex(8)
+            lobby["status"] = "active"
+            lobby["turn_started_at"] = time.time()  # start timer fresh when P2 joins
+        elif lobby["status"] == "active" and lobby["p2_token"] is not None:
+            pass  # P2 is rejoining after losing localStorage (e.g. incognito window closed)
+        else:
             return jsonify({"error": "lobby_full"}), 403
-        lobby["p2_token"] = secrets.token_hex(8)
-        lobby["status"] = "active"
-        lobby["turn_started_at"] = time.time()  # start timer fresh when P2 joins
 
     return jsonify({
         "p2_token": lobby["p2_token"],

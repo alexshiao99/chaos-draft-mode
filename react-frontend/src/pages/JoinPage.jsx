@@ -23,7 +23,13 @@ export default function JoinPage() {
     apiFetch(`/api/${lobbyId}/join`, { method: "POST" })
       .then(async (res) => {
         if (res.status === 404) { setError("Lobby not found or expired."); return }
-        if (res.status === 403) { setError("This lobby is already full."); return }
+        if (res.status === 403) {
+          const body = await res.json().catch(() => ({}))
+          setError(body.error === 'ai_lobby'
+            ? "This is an AI Draft lobby — no second player needed."
+            : "This lobby is already full.")
+          return
+        }
         if (!res.ok) { setError("Failed to join lobby."); return }
         const data = await res.json()
         localStorage.setItem(tokenKey(lobbyId), data.p2_token)
