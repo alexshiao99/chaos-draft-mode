@@ -126,6 +126,31 @@ def _get_lobby(lobby_id):
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
+@draft_bp.route("/api/lobbies", methods=["GET"])
+def list_lobbies():
+    """Return a list of active (non-setup) lobbies."""
+    now = time.time()
+    result = []
+    for lid, st in list(lobbies.items()):
+        if st["phase"] == "setup":
+            continue
+        result.append({
+            "lobby_id":     lid,
+            "p1_name":      st["p1_name"],
+            "p2_name":      st["p2_name"],
+            "phase":        st["phase"],
+            "status":       st["status"],
+            "ai_mode":      st["ai_mode"],
+            "action_index": st["action_index"],
+            "picks":        len(st["p1_picks"]) + len(st["p2_picks"]),
+            "bans":         len([b for b in st["banned"] if b["by"] != "random"]),
+            "created_at":   st["created_at"],
+            "age_seconds":  round(now - st["created_at"]),
+        })
+    result.sort(key=lambda x: x["created_at"], reverse=True)
+    return jsonify(result)
+
+
 @draft_bp.route("/api/start", methods=["POST"])
 def start_draft():
     body = request.json or {}
