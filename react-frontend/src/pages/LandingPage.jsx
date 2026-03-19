@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { QRCodeCanvas } from 'qrcode.react'
 import { apiFetch, tokenKey, roleKey } from '../api'
+import useAuth from '../hooks/useAuth'
 
 // ── API helper ────────────────────────────────────────────────────────────────
 async function apiCall(path, method = 'GET', body = null) {
@@ -263,6 +264,7 @@ const MODES = ['All', 'Normal Draft', 'AI Draft']
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const navigate = useNavigate()
+  const { player: loggedInPlayer, logout } = useAuth()
 
   // Mode filter
   const [mode, setMode] = useState('All')
@@ -270,7 +272,7 @@ export default function LandingPage() {
 
   // Players loaded from API
   const [players, setPlayers] = useState([])
-  const [p1, setP1]           = useState('')
+  const [p1, setP1]           = useState(loggedInPlayer || '')
   const [p2, setP2]           = useState('')
 
   // Add-player modal
@@ -293,8 +295,14 @@ export default function LandingPage() {
       .then(list => {
         if (Array.isArray(list) && list.length > 0) {
           setPlayers(list)
-          setP1(list[0])
-          setP2(list[1] ?? list[0])
+          if (loggedInPlayer) {
+            setP1(loggedInPlayer)
+            const other = list.find(n => n !== loggedInPlayer) ?? list[0]
+            setP2(other)
+          } else {
+            setP1(list[0])
+            setP2(list[1] ?? list[0])
+          }
         }
       })
       .catch(() => {}) // fallback handled below via playerStats
@@ -375,11 +383,6 @@ export default function LandingPage() {
     setAiLoading(false)
   }
 
-  function swapPlayers() {
-    setP1(p2)
-    setP2(p1)
-  }
-
   // Active lobbies
   const [activeLobbies, setActiveLobbies] = useState([])
   const fetchLobbies = useCallback(() => {
@@ -438,6 +441,9 @@ export default function LandingPage() {
         <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <Link to="/player_stats" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Players</Link>
           <Link to="/stats"        style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Card Stats</Link>
+          <button onClick={logout} style={{ color: 'var(--text-muted)', fontSize: '.85rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+            Logout ({loggedInPlayer})
+          </button>
         </nav>
       </header>
 
@@ -493,28 +499,15 @@ export default function LandingPage() {
           <div id="setup-screen">
             <h2>Draft Setup</h2>
             <div className="field">
-              <label>Player 1 Name</label>
-              <select value={p1} onChange={e => setP1(e.target.value)}>
-                {players.map(name => <option key={name} value={name}>{name}</option>)}
+              <label>Player 1 (You)</label>
+              <select value={p1} disabled style={{ opacity: 0.6, cursor: 'not-allowed' }}>
+                <option value={p1}>{p1}</option>
               </select>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '.1rem 0' }}>
-              <button
-                onClick={swapPlayers}
-                title="Swap players"
-                style={{
-                  background: 'transparent', border: '1px solid var(--border)', borderRadius: '999px',
-                  color: 'var(--text-muted)', cursor: 'pointer', fontSize: '.85rem',
-                  padding: '.25rem .75rem', transition: 'all .15s',
-                }}
-              >
-                ⇅ Swap
-              </button>
             </div>
             <div className="field">
               <label>Player 2 Name</label>
               <select value={p2} onChange={e => setP2(e.target.value)}>
-                {players.map(name => <option key={name} value={name}>{name}</option>)}
+                {players.filter(name => name !== loggedInPlayer).map(name => <option key={name} value={name}>{name}</option>)}
               </select>
             </div>
             {p1 === p2 && (
@@ -584,16 +577,22 @@ export default function LandingPage() {
                         : lobby.status === 'complete' ? 'var(--text-muted)'
                         : 'var(--win)'
 
+                      const canJoin = loggedInPlayer === lobby.p1_name || loggedInPlayer === lobby.p2_name
+
                       return (
                         <li
                           key={lobby.lobby_id}
                           style={{
                             display: 'flex', alignItems: 'center', gap: '.75rem',
                             padding: '.6rem .9rem', borderBottom: '1px solid rgba(42,48,80,.5)',
-                            cursor: 'pointer',
+                            cursor: canJoin ? 'pointer' : 'default',
+                            opacity: canJoin ? 1 : 0.45,
                           }}
                           onClick={() => {
-                            if (lobby.status === 'waiting_for_p2') {
+                            const isP1 = loggedInPlayer === lobby.p1_name
+                            const isP2 = loggedInPlayer === lobby.p2_name
+                            if (!isP1 && !isP2) return
+                            if (lobby.status === 'waiting_for_p2' && isP2) {
                               navigate(`/draft/${lobby.lobby_id}/join`)
                             } else {
                               navigate(`/draft/${lobby.lobby_id}`)

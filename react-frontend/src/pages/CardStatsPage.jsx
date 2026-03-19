@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CARD_TIER, TIER_ORDER, TIER_ICONS } from '../data/cardTiers'
 import { CARD_TYPE, TYPE_ORDER, TYPE_ICONS } from '../data/cardTypes'
+import useAuth from '../hooks/useAuth'
 
 const MODES = ['All', 'Normal Draft', 'AI Draft']
 
@@ -25,6 +26,7 @@ function BarCell({ value, max, fillClass }) {
 
 export default function CardStatsPage() {
   const navigate = useNavigate()
+  const { player: loggedInPlayer, logout } = useAuth()
   const [cards, setCards] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -98,6 +100,9 @@ export default function CardStatsPage() {
         <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Home</Link>
           <Link to="/player_stats" style={{ color: 'var(--text-muted)', fontSize: '.85rem', textDecoration: 'none' }}>Players</Link>
+          <button onClick={logout} style={{ color: 'var(--text-muted)', fontSize: '.85rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+            Logout ({loggedInPlayer})
+          </button>
         </nav>
       </header>
 

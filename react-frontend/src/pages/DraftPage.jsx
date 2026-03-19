@@ -4,6 +4,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { CARD_TIER, TIER_ORDER, TIER_ICONS } from "../data/cardTiers";
 import { CARD_TYPE, TYPE_ORDER, TYPE_ICONS } from "../data/cardTypes";
 import { draftFetch, tokenKey, roleKey } from "../api";
+import useAuth from "../hooks/useAuth";
 
 // ── API helper (kept for non-lobby calls) ────────────────────────────────────
 async function apiCall(path, method = "GET", body = null) {
@@ -808,6 +809,7 @@ export default function DraftPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { lobbyId } = useParams();
+  const { player: loggedInPlayer, logout } = useAuth();
 
   const [draft, setDraft] = useState(null);
   const [rarityFilter, setRarityFilter] = useState("All");
@@ -1128,9 +1130,14 @@ export default function DraftPage() {
       <header>
         <h1>⚔️ CR Draft</h1>
         {phaseBadge()}
-        <button className="btn btn-ghost" onClick={resetDraft}>
-          ↺ Restart
-        </button>
+        <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+          <button className="btn btn-ghost" onClick={resetDraft}>
+            ↺ Restart
+          </button>
+          <button onClick={logout} style={{ color: 'var(--text-muted)', fontSize: '.85rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+            Logout ({loggedInPlayer})
+          </button>
+        </div>
       </header>
 
       <main>
